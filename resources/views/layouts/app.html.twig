@@ -67,7 +67,7 @@
                         <a href="{{ url('/profile') }}" class="menu-item">{{ icon('user', 'h-4 w-4') }} Mi perfil</a>
                         {% if app.isAdmin %}<a href="{{ url('/admin') }}" class="menu-item sm:hidden">{{ icon('shield', 'h-4 w-4') }} Administración</a>{% endif %}
                         <form method="post" action="{{ url('/logout') }}" class="border-t border-slate-100 dark:border-slate-700">
-                            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                             <button type="submit" class="menu-item">{{ icon('logout', 'h-4 w-4') }} Cerrar sesión</button>
                         </form>
                     </div>

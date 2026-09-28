@@ -6,7 +6,7 @@
     <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Crea una nueva contraseña</h1>
     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Para la cuenta <strong>{{ email }}</strong>.</p>
     <form method="post" action="{{ url('/reset-password/' ~ token) }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
-        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
         <div>
             <label for="password" class="label">Nueva contraseña</label>
             <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" class="input" autofocus>

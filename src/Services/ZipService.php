@@ -145,6 +145,13 @@ final class ZipService
         $zip = new ZipStream(
             outputName: $plan['name'] . '.zip',
             sendHttpHeaders: true,
+            httpHeaderCallback: static function (string $header): void {
+                // El ZIP es privado: no permitir caché compartida.
+                if (stripos($header, 'Pragma:') === 0) {
+                    return;
+                }
+                header(stripos($header, 'Cache-Control:') === 0 ? 'Cache-Control: private, no-store' : $header);
+            },
             contentType: 'application/zip',
             defaultCompressionMethod: CompressionMethod::STORE,
             defaultEnableZeroHeader: true,

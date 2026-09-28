@@ -9,7 +9,7 @@
     <section class="card mt-6 p-6">
         <h2 class="font-semibold text-slate-900 dark:text-white">Datos personales</h2>
         <form method="post" action="{{ url('/profile') }}" class="mt-4 space-y-4">
-            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
             <div>
                 <label for="name" class="label">Nombre</label>
                 <input id="name" name="name" required maxlength="150" value="{{ profile.name }}" class="input">
@@ -35,7 +35,7 @@
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Entraste con un enlace de acceso. Para cambiar la contraseña, usa <a class="font-medium text-brand-600 hover:underline" href="{{ url('/forgot-password') }}">“Olvidé mi contraseña”</a>.</p>
         {% else %}
         <form method="post" action="{{ url('/profile/password') }}" class="mt-4 space-y-4">
-            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
             {% if profile.password_hash %}
             <div>
                 <label for="current_password" class="label">Contraseña actual</label>
@@ -63,7 +63,7 @@
             <p class="text-sm text-slate-500">Sal de tu cuenta en este dispositivo.</p>
         </div>
         <form method="post" action="{{ url('/logout') }}">
-            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
             <button type="submit" class="btn-secondary">{{ icon('logout', 'h-4 w-4') }} Cerrar sesión</button>
         </form>
     </section>

@@ -12,8 +12,8 @@
     </div>
 
     <form x-show="tab === 'password'" method="post" action="{{ url('/login') }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
-        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
-        <input type="hidden" name="next" value="{{ next }}">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
+        <input type="hidden" name="next" value="{{ next }}" hidden>
         <div>
             <label for="email" class="label">Correo electrónico</label>
             <input id="email" name="email" type="email" required autocomplete="email" autofocus class="input" value="{{ app.old('email') }}" placeholder="nombre@entidad.com">
@@ -37,7 +37,7 @@
     </form>
 
     <form x-cloak x-show="tab === 'magic'" method="post" action="{{ url('/magic-link') }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
-        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
         <p class="text-sm text-slate-600 dark:text-slate-300">Te enviaremos un enlace de acceso a tu correo. No necesitas recordar la contraseña: ideal si solo vas a ver o descargar archivos.</p>
         <div>
             <label for="magic-email" class="label">Correo electrónico</label>

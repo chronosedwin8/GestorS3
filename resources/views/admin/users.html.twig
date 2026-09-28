@@ -35,7 +35,7 @@
                                     <div class="modal-backdrop" @click="edit = false"></div>
                                     <div class="modal-wrap pointer-events-none">
                                         <form method="post" action="{{ url('/admin/users/' ~ u.uuid) }}" class="modal-panel pointer-events-auto max-w-md space-y-4 p-6 text-left">
-                                            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                                            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                                             <h2 class="text-lg font-semibold">Editar usuario</h2>
                                             <p class="text-sm text-slate-500">{{ u.email }}</p>
                                             <div><label class="label">Nombre</label><input name="name" value="{{ u.name }}" required class="input"></div>
@@ -74,7 +74,7 @@
             <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">{{ icon('user-plus', 'h-4 w-4') }} Invitar usuarios</h2>
             <p class="mt-1 text-sm text-slate-500">Recibirán un correo para crear su cuenta. Para darles acceso a una carpeta, invítalos desde la propia carpeta.</p>
             <form method="post" action="{{ url('/admin/users/invite') }}" class="mt-4 space-y-3">
-                <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                 <textarea name="emails" rows="3" required class="input" placeholder="correo@entidad.com, otro@empresa.co"></textarea>
                 <select name="entity" class="input">
                     <option value="">Entidad (automática por dominio)</option>

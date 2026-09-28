@@ -1,5 +1,5 @@
 {# Notificaciones efímeras (Alpine store "toasts") #}
-<div x-data class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3 sm:left-auto sm:right-4 sm:top-4 sm:items-end"
+<div x-data class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3 sm:bottom-4 sm:left-4 sm:right-auto sm:top-auto sm:items-start"
      aria-live="polite" aria-atomic="false">
     <template x-for="t in $store.toasts.items" :key="t.id">
         <div class="pointer-events-auto flex w-full max-w-sm animate-slide-up items-start gap-3 rounded-xl border bg-white px-4 py-3 text-sm shadow-panel dark:bg-slate-800"

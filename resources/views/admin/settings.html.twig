@@ -7,7 +7,7 @@
 {% import _self as fmt %}
 <div class="grid gap-6 lg:grid-cols-3">
     <form method="post" action="{{ url('/admin/settings') }}" class="card space-y-5 p-6 lg:col-span-2">
-        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
         <div>
             <h2 class="font-semibold text-slate-900 dark:text-white">Límites de subida y descarga</h2>
             <p class="mt-1 text-sm text-slate-500">Deja un campo vacío para usar el valor por defecto de <code>.env</code>.</p>

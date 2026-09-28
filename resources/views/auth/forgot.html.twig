@@ -6,7 +6,7 @@
 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Escribe tu correo y te enviaremos un enlace para crear una nueva.</p>
 
 <form method="post" action="{{ url('/forgot-password') }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
-    <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+    <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
     <div>
         <label for="email" class="label">Correo electrónico</label>
         <input id="email" name="email" type="email" required autofocus autocomplete="email" class="input" placeholder="nombre@entidad.com">

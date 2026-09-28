@@ -142,10 +142,10 @@ export function createUploadStore() {
     // ---------------------------------------------------------------- Getters
 
     get active() {
-      return this.items.filter((i) => ['preparing', 'uploading', 'retrying', 'finishing'].includes(i.status));
+      return this.items.filter((i) => ['preparing', 'uploading', 'retrying', 'finishing', 'pausing'].includes(i.status));
     },
     get hasActive() {
-      return this.items.some((i) => ['queued', 'preparing', 'uploading', 'retrying', 'finishing', 'conflict'].includes(i.status));
+      return this.items.some((i) => ['queued', 'preparing', 'uploading', 'retrying', 'finishing', 'pausing', 'conflict'].includes(i.status));
     },
     get counts() {
       const c = { total: 0, done: 0, error: 0, active: 0, queued: 0, paused: 0, other: 0 };
@@ -224,6 +224,7 @@ export function createUploadStore() {
         }
         case 'retrying': return 'Conexión inestable, reintentando…';
         case 'finishing': return 'Verificando…';
+        case 'pausing': return 'Pausando… (terminando las partes en curso)';
         case 'paused': return `Pausado · ${this.itemPercent(item)}%`;
         case 'done': return item.resultName && item.resultName !== item.name ? `Subido como “${item.resultName}”` : 'Completado';
         case 'skipped': return 'Omitido (ya existía)';
@@ -421,6 +422,12 @@ export function createUploadStore() {
         toast('success', total === 1 ? 'Archivo subido correctamente.' : `${plural(total, 'archivo subido', 'archivos subidos')} correctamente.`);
       }
       this.announce(`Subida terminada: ${plural(total, 'archivo', 'archivos')}.`);
+      // Sin errores: minimizar el panel para no tapar el contenido.
+      if (!c.error && !c.paused) {
+        setTimeout(() => {
+          if (!this.hasActive && !this.counts.error) this.minimized = true;
+        }, 4000);
+      }
       for (const [folderUuid, count] of Object.entries(counts)) {
         post(`/api/folders/${folderUuid}/notify-upload`, { count }).catch(() => {});
       }
@@ -431,6 +438,7 @@ export function createUploadStore() {
     pause(item) {
       const rt = runtime.get(item.id);
       if (rt && rt.uploader && ['preparing', 'uploading', 'retrying', 'finishing'].includes(item.status)) {
+        item.status = 'pausing';
         rt.uploader.pause();
       } else if (item.status === 'queued') {
         item.status = 'paused';

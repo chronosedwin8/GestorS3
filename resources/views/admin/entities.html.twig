@@ -17,12 +17,12 @@
                         <td class="whitespace-nowrap text-right">
                             <button type="button" class="btn-ghost btn-sm" @click="edit = !edit">{{ icon('pencil', 'h-3.5 w-3.5') }} Editar</button>
                             <form method="post" action="{{ url('/admin/entities/' ~ e.uuid ~ '/delete') }}" class="inline" x-data @submit="if (!confirm('¿Eliminar la entidad “{{ e.name|e('js') }}”? Sus usuarios quedarán sin entidad.')) $event.preventDefault()">
-                                <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                                 <button type="submit" class="btn-ghost btn-sm text-red-600">{{ icon('trash', 'h-3.5 w-3.5') }}</button>
                             </form>
                             <template x-if="edit">
                                 <form method="post" action="{{ url('/admin/entities/' ~ e.uuid) }}" class="mt-2 flex flex-wrap justify-end gap-2">
-                                    <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                                    <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                                     <input name="name" value="{{ e.name }}" required class="input w-48 py-1.5" aria-label="Nombre">
                                     <input name="domain" value="{{ e.domain }}" class="input w-40 py-1.5" placeholder="dominio.com" aria-label="Dominio">
                                     <button class="btn-primary btn-sm">Guardar</button>
@@ -41,7 +41,7 @@
         <section class="card p-5">
             <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">{{ icon('plus', 'h-4 w-4') }} Nueva entidad</h2>
             <form method="post" action="{{ url('/admin/entities') }}" class="mt-4 space-y-3">
-                <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                 <div><label class="label" for="en-name">Nombre</label><input id="en-name" name="name" required maxlength="190" class="input" placeholder="Ej.: Secretaría de Educación"></div>
                 <div><label class="label" for="en-domain">Dominio <span class="font-normal text-slate-400">(opcional)</span></label><input id="en-domain" name="domain" maxlength="190" class="input" placeholder="educacion.gov.co"></div>
                 <button class="btn-primary w-full">Crear entidad</button>

@@ -66,9 +66,9 @@
                                 <template x-if="item.relativePath && item.relativePath.includes('/')">
                                     <p class="truncate text-xs text-slate-400" x-text="item.relativePath.substring(0, item.relativePath.lastIndexOf('/'))"></p>
                                 </template>
-                                <template x-if="['uploading', 'preparing', 'retrying', 'finishing', 'paused'].includes(item.status)">
+                                <template x-if="['uploading', 'preparing', 'retrying', 'finishing', 'pausing', 'paused'].includes(item.status)">
                                     <div class="progress mt-2" role="progressbar" :aria-valuenow="$store.uploads.itemPercent(item)" aria-valuemin="0" aria-valuemax="100" :aria-label="'Progreso de ' + item.name">
-                                        <div class="progress-bar" :class="{ 'bg-slate-400': item.status === 'paused', 'bg-amber-500': item.status === 'retrying', 'animate-pulse': item.status === 'preparing' || item.status === 'finishing' }" :style="'width:' + Math.max(item.status === 'preparing' ? 3 : 0, $store.uploads.itemPercent(item)) + '%'"></div>
+                                        <div class="progress-bar" :class="{ 'bg-slate-400': item.status === 'paused' || item.status === 'pausing', 'bg-amber-500': item.status === 'retrying', 'animate-pulse': item.status === 'preparing' || item.status === 'finishing' }" :style="'width:' + Math.max(item.status === 'preparing' ? 3 : 0, $store.uploads.itemPercent(item)) + '%'"></div>
                                     </div>
                                 </template>
                                 <p class="mt-1 text-xs"

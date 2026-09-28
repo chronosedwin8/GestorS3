@@ -188,6 +188,14 @@ export class S3Uploader {
 
   pause() {
     this.stopReason = 'pause';
+    if (this.mode === 'multipart' && this.xhrs.size) {
+      // Pausa suave: dejar terminar las partes en curso para no perder progreso (máx. 8 s).
+      clearTimeout(this.pauseTimer);
+      this.pauseTimer = setTimeout(() => {
+        if (this.stopReason === 'pause') this.abortRequests();
+      }, 8000);
+      return;
+    }
     this.abortRequests();
   }
 

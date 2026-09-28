@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\MailService;
+use App\Services\S3Service;
 use App\Support\Config;
 use App\Support\Token;
 use App\Support\TwigExtension;
@@ -107,6 +108,27 @@ return [
 
         return new S3Client($options);
     },
+
+    // Cliente que firma las URLs usadas por el navegador. En Docker+MinIO el servidor habla con
+    // http://minio:9000 pero el navegador necesita http://localhost:9000 (S3_PUBLIC_ENDPOINT).
+    's3.presigner' => static function (Config $config, ContainerInterface $c): S3Client {
+        $public = $config->string('s3.public_endpoint');
+        if ($public === '') {
+            return $c->get(S3Client::class);
+        }
+
+        return new S3Client([
+            'version' => '2006-03-01',
+            'region' => $config->string('s3.region', 'us-east-1'),
+            'use_path_style_endpoint' => $config->bool('s3.path_style'),
+            'request_checksum_calculation' => 'when_required',
+            'response_checksum_validation' => 'when_required',
+            'endpoint' => $public,
+            'credentials' => ['key' => $config->string('s3.key'), 'secret' => $config->string('s3.secret')],
+        ]);
+    },
+
+    S3Service::class => autowire()->constructorParameter('presigner', get('s3.presigner')),
 
     ResponseFactoryInterface::class => static fn (): ResponseFactoryInterface => new ResponseFactory(),
 ];

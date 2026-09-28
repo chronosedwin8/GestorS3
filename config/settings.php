@@ -47,6 +47,7 @@ return [
         'bucket' => (string) $env('S3_BUCKET', ''),
         'prefix' => trim((string) $env('S3_PREFIX', ''), '/'),
         'endpoint' => (string) $env('S3_ENDPOINT', ''),
+        'public_endpoint' => (string) $env('S3_PUBLIC_ENDPOINT', ''),
         'path_style' => $bool($env('S3_USE_PATH_STYLE', 'false')),
         'upload_ttl' => (int) $env('S3_PRESIGN_UPLOAD_TTL', 1800),
         'download_ttl' => (int) $env('S3_PRESIGN_DOWNLOAD_TTL', 600),

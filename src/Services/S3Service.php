@@ -22,7 +22,16 @@ final class S3Service
         private readonly S3Client $client,
         private readonly Config $config,
         private readonly LoggerInterface $logger,
+        private readonly ?S3Client $presigner = null,
     ) {
+    }
+
+    /**
+     * Cliente para firmar URLs que usará el navegador (S3_PUBLIC_ENDPOINT, p. ej. MinIO en Docker).
+     */
+    private function presigner(): S3Client
+    {
+        return $this->presigner ?? $this->client;
     }
 
     public function bucket(): string
@@ -52,13 +61,13 @@ final class S3Service
         $ttl = $this->config->int('s3.upload_ttl', 1800);
 
         return $this->call(function () use ($key, $contentType, $originalName, $ttl): array {
-            $command = $this->client->getCommand('PutObject', [
+            $command = $this->presigner()->getCommand('PutObject', [
                 'Bucket' => $this->bucket(),
                 'Key' => $key,
                 'ContentType' => $contentType,
                 'Metadata' => ['original-name' => rawurlencode($originalName)],
             ]);
-            $request = $this->client->createPresignedRequest($command, '+' . $ttl . ' seconds');
+            $request = $this->presigner()->createPresignedRequest($command, '+' . $ttl . ' seconds');
             // Content-Type no se firma en URLs prefirmadas, pero el cliente debe enviarlo para que S3 guarde el tipo real.
             $headers = ['Content-Type' => $contentType];
             foreach ($request->getHeaders() as $name => $values) {
@@ -92,14 +101,14 @@ final class S3Service
         $ttl = $this->config->int('s3.upload_ttl', 1800);
 
         return $this->call(function () use ($key, $uploadId, $partNumber, $ttl): string {
-            $command = $this->client->getCommand('UploadPart', [
+            $command = $this->presigner()->getCommand('UploadPart', [
                 'Bucket' => $this->bucket(),
                 'Key' => $key,
                 'UploadId' => $uploadId,
                 'PartNumber' => $partNumber,
             ]);
 
-            return (string) $this->client->createPresignedRequest($command, '+' . $ttl . ' seconds')->getUri();
+            return (string) $this->presigner()->createPresignedRequest($command, '+' . $ttl . ' seconds')->getUri();
         }, 'presign_part');
     }
 
@@ -203,9 +212,9 @@ final class S3Service
             if ($contentType !== null) {
                 $params['ResponseContentType'] = $contentType;
             }
-            $command = $this->client->getCommand('GetObject', $params);
+            $command = $this->presigner()->getCommand('GetObject', $params);
 
-            return (string) $this->client->createPresignedRequest($command, '+' . $ttl . ' seconds')->getUri();
+            return (string) $this->presigner()->createPresignedRequest($command, '+' . $ttl . ' seconds')->getUri();
         }, 'presign_get');
     }
 

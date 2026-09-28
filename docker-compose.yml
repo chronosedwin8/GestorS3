@@ -1,0 +1,78 @@
+# Entorno local completo sin credenciales de AWS:
+#   App:      http://localhost:8081
+#   S3 local: http://localhost:8333 (SeaweedFS, compatible con S3; credenciales en docker/s3/s3.json)
+#   Mailpit:  http://localhost:8025 (correos enviados por la app)
+#   MySQL:    localhost:3307 (fileshare / fileshare)
+# Uso: cp .env.docker .env && make up
+#      (o sin tocar tu .env: APP_ENV_FILE=.env.docker docker compose up -d)
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - .:/var/www/app
+    env_file: ${APP_ENV_FILE:-.env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      s3:
+        condition: service_started
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - .:/var/www/app:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: fileshare
+      MYSQL_USER: fileshare
+      MYSQL_PASSWORD: fileshare
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Almacenamiento compatible con S3 para desarrollo. MinIO dejó de publicar imágenes públicas,
+  # por eso se usa SeaweedFS (URLs prefirmadas, multipart y CORS). El bucket lo crea
+  # "php bin/console s3:setup" (make up lo ejecuta).
+  s3:
+    image: chrislusf/seaweedfs:latest
+    command: >
+      server -dir=/data -ip=s3 -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024
+      -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+      -s3.allowedOrigins=http://localhost:8081
+    ports:
+      - "8333:8333"
+    volumes:
+      - s3-data:/data
+      - ./docker/s3/s3.json:/etc/seaweedfs/s3.json:ro
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  s3-data:

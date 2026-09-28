@@ -24,9 +24,11 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
     {
         $response = $handler->handle($request);
         $storage = 'https://*.amazonaws.com';
-        $endpoint = $this->config->string('s3.endpoint');
-        if ($endpoint !== '') {
-            $storage .= ' ' . ViewContext::origin($endpoint);
+        foreach (['s3.endpoint', 's3.public_endpoint'] as $key) {
+            $endpoint = $this->config->string($key);
+            if ($endpoint !== '') {
+                $storage .= ' ' . ViewContext::origin($endpoint);
+            }
         }
         // Alpine.js evalúa expresiones en tiempo de ejecución: requiere 'unsafe-eval'. No se permiten scripts inline.
         $csp = implode('; ', [

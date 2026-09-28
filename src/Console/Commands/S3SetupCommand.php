@@ -80,12 +80,18 @@ final class S3SetupCommand extends Command
                 ],
             ]));
 
-            $this->step($io, 'Cifrado en reposo (SSE-S3)', fn () => $this->client->putBucketEncryption([
-                'Bucket' => $bucket,
-                'ServerSideEncryptionConfiguration' => [
-                    'Rules' => [['ApplyServerSideEncryptionByDefault' => ['SSEAlgorithm' => 'AES256']]],
-                ],
-            ]));
+            if ($this->config->string('s3.endpoint') === '') {
+                $this->step($io, 'Cifrado en reposo (SSE-S3)', fn () => $this->client->putBucketEncryption([
+                    'Bucket' => $bucket,
+                    'ServerSideEncryptionConfiguration' => [
+                        'Rules' => [['ApplyServerSideEncryptionByDefault' => ['SSEAlgorithm' => 'AES256']]],
+                    ],
+                ]));
+            } else {
+                // En almacenamientos compatibles (MinIO, SeaweedFS...) el cifrado por defecto requiere
+                // configuración propia del servidor; forzarlo puede impedir escribir.
+                $io->writeln('• Cifrado por defecto omitido (endpoint compatible con S3, no AWS).');
+            }
 
             $this->step($io, 'CORS para ' . implode(', ', $origins), fn () => $this->client->putBucketCors([
                 'Bucket' => $bucket,

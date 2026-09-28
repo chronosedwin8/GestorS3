@@ -218,6 +218,20 @@ Una subida por partes abandonada ocupa espacio (y se cobra) hasta que se aborta.
 6. Sesiones: archivos en `storage/sessions` (cookie `HttpOnly; Secure; SameSite=Lax` cuando `APP_URL` es https).
 7. Programa el cron (ver abajo).
 
+### Despliegue actual: CloudPanel (dateien.colegioaleman.edu.co)
+
+- Sitio PHP 8.5 de CloudPanel, usuario del sitio `colegioaleman-dateien`, base de datos `dateien`.
+- Código en `/home/colegioaleman-dateien/dateien-app`; el *document root* de CloudPanel (`htdocs/dateien.colegioaleman.edu.co`) es un **enlace simbólico** a `dateien-app/public` (no se modificó el vhost). El contenido original quedó respaldado en `backups/htdocs-original-*`.
+- Certificado Let's Encrypt instalado con `clpctl lets-encrypt:install:certificate` (CloudPanel lo renueva).
+- Tareas programadas en CloudPanel → Cron Jobs: `uploads:cleanup` cada hora y `storage:purge --days=30` diario a las 3:30 (salida en `storage/logs/cron.log`).
+- Correo: Microsoft 365 (`smtp.office365.com:587`, STARTTLS) con el buzón `sitioweb@colegioaleman.edu.co` (requiere *Authenticated SMTP* habilitado en ese buzón). `MAIL_FROM` debe ser ese mismo buzón.
+
+**Actualizar la versión** (compilar siempre en local, nunca en el servidor):
+
+1. En local: `npm run build`, `git archive HEAD` a una carpeta temporal, `composer install --no-dev --optimize-autoloader` allí y empaquetar con `tar -czf`.
+2. Subir el paquete y extraerlo sobre `dateien-app` **como el usuario del sitio** (`sudo -u colegioaleman-dateien tar -xzf ...`), sin sobrescribir `.env` ni `storage/`.
+3. `sudo -u colegioaleman-dateien php8.5 vendor/bin/phinx migrate -c phinx.php`.
+
 ## Comandos de mantenimiento
 
 | Comando | Qué hace | Frecuencia |

@@ -54,6 +54,14 @@ final class Session
         $this->started = true;
     }
 
+    /**
+     * true cuando hay una sesión nativa de PHP activa (no en consola/pruebas).
+     */
+    public function isNative(): bool
+    {
+        return session_status() === PHP_SESSION_ACTIVE;
+    }
+
     public function get(string $key, mixed $default = null): mixed
     {
         return $_SESSION[$key] ?? $default;

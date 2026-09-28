@@ -32,8 +32,16 @@ final class SessionMiddleware implements MiddlewareInterface
         $this->session->start();
         $this->auth->reset();
         $user = $this->auth->user();
+        $path = RequestHelper::path($request, $this->config->basePath());
         $this->view->setUser($user);
-        $this->view->setPath(RequestHelper::path($request, $this->config->basePath()));
+        $this->view->setPath($path);
+
+        // La API no modifica la sesión después de autenticar: liberar el bloqueo del archivo de sesión
+        // permite que las peticiones en paralelo del cargador (firmas de partes, confirmaciones) no se serialicen.
+        if ($this->session->isNative() && (str_starts_with($path, '/api/') || preg_match('#^/s/[^/]+/(api|files|zip-info)#', $path) === 1)) {
+            $this->session->csrfToken();
+            session_write_close();
+        }
 
         return $handler->handle($request->withAttribute('user', $user));
     }

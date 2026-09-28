@@ -1,0 +1,14 @@
+{% extends 'layouts/public.html.twig' %}
+
+{% block head %}
+    {{ json_script(initial|merge({ mode: 'public', token: token }), 'explorer-initial') }}
+{% endblock %}
+
+{% block content %}
+    {% if link.expires_at %}
+    <div class="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+        <p class="alert-info text-xs">{{ icon('clock', 'h-4 w-4 shrink-0') }} Este enlace estará disponible hasta el {{ link.expires_at|local_date('d/m/Y \\a \\l\\a\\s H:i') }}.</p>
+    </div>
+    {% endif %}
+    {% include 'folders/_explorer.html.twig' with { mode: 'public' } %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'admin/layout.html.twig' %}
+{% set pageTitle = 'Límites' %}
+
+{% macro gb(bytes) %}{{ (bytes / 1073741824)|round(2)|replace({'.00': ''}) }}{% endmacro %}
+
+{% block admin %}
+{% import _self as fmt %}
+<div class="grid gap-6 lg:grid-cols-3">
+    <form method="post" action="{{ url('/admin/settings') }}" class="card space-y-5 p-6 lg:col-span-2">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <div>
+            <h2 class="font-semibold text-slate-900 dark:text-white">Límites de subida y descarga</h2>
+            <p class="mt-1 text-sm text-slate-500">Deja un campo vacío para usar el valor por defecto de <code>.env</code>.</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label class="label" for="max_file_gb">Tamaño máximo por archivo (GB)</label>
+                <input id="max_file_gb" name="max_file_gb" inputmode="decimal" class="input" value="{{ settings.max_file_bytes.overridden ? fmt.gb(settings.max_file_bytes.value) : '' }}" placeholder="{{ fmt.gb(settings.max_file_bytes.default) }}">
+                <p class="hint">Actual: {{ settings.max_file_bytes.value|bytes }}</p>
+            </div>
+            <div>
+                <label class="label" for="folder_max_gb">Tamaño máximo por carpeta raíz (GB)</label>
+                <input id="folder_max_gb" name="folder_max_gb" inputmode="decimal" class="input" value="{{ settings.folder_max_bytes.overridden ? fmt.gb(settings.folder_max_bytes.value) : '' }}" placeholder="{{ fmt.gb(settings.folder_max_bytes.default) }}">
+                <p class="hint">Actual: {{ settings.folder_max_bytes.value|bytes }}</p>
+            </div>
+            <div>
+                <label class="label" for="zip_max_gb">Tamaño máximo de un ZIP (GB)</label>
+                <input id="zip_max_gb" name="zip_max_gb" inputmode="decimal" class="input" value="{{ settings.zip_max_bytes.overridden ? fmt.gb(settings.zip_max_bytes.value) : '' }}" placeholder="{{ fmt.gb(settings.zip_max_bytes.default) }}">
+                <p class="hint">Actual: {{ settings.zip_max_bytes.value|bytes }}</p>
+            </div>
+            <div>
+                <label class="label" for="zip_max_files">Archivos máximos por ZIP</label>
+                <input id="zip_max_files" name="zip_max_files" inputmode="numeric" class="input" value="{{ settings.zip_max_files.overridden ? settings.zip_max_files.value : '' }}" placeholder="{{ settings.zip_max_files.default }}">
+                <p class="hint">Actual: {{ settings.zip_max_files.value }}</p>
+            </div>
+        </div>
+        <div>
+            <label class="label" for="blocked_extensions">Extensiones bloqueadas</label>
+            <input id="blocked_extensions" name="blocked_extensions" class="input font-mono" value="{{ settings.blocked_extensions.value }}" placeholder="exe, bat, cmd…">
+            <p class="hint">Separadas por comas. Déjalo vacío para permitir todas. <strong>Es un control blando</strong>: se basa en la extensión del nombre y puede evitarse renombrando el archivo o comprimiéndolo.</p>
+        </div>
+        <div class="flex justify-end"><button class="btn-primary">Guardar límites</button></div>
+    </form>
+
+    <aside class="space-y-6">
+        <section class="card p-5 text-sm">
+            <h2 class="font-semibold text-slate-900 dark:text-white">Almacenamiento (solo lectura)</h2>
+            <dl class="mt-3 space-y-2">
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Bucket</dt><dd class="truncate font-mono">{{ s3.bucket ?: '— sin configurar —' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Región</dt><dd class="font-mono">{{ s3.region }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Prefijo</dt><dd class="font-mono">{{ s3.prefix ?: '—' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Endpoint</dt><dd class="truncate font-mono">{{ s3.endpoint ?: 'AWS' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Subida simple hasta</dt><dd>{{ singleMax|bytes }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500">Tamaño de parte</dt><dd>{{ partSize|bytes }}</dd></div>
+            </dl>
+            <p class="mt-3 text-xs text-slate-500">Estos valores se cambian en el archivo <code>.env</code> del servidor.</p>
+        </section>
+    </aside>
+</div>
+{% endblock %}

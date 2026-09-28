@@ -1,0 +1,10 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block head %}
+    {{ json_script(initial|merge({ mode: 'app' }), 'explorer-initial') }}
+{% endblock %}
+
+{% block content %}
+    {% include 'folders/_explorer.html.twig' with { mode: 'app' } %}
+    {% include 'folders/_share-dialog.html.twig' %}
+{% endblock %}

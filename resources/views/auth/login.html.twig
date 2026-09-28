@@ -1,0 +1,58 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Iniciar sesión' %}
+
+{% block content %}
+<div x-data="{ tab: '{{ tab == 'magic' ? 'magic' : 'password' }}' }">
+    <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Inicia sesión</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Accede a las carpetas que creaste o que compartieron contigo.</p>
+
+    <div class="mt-6 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 text-sm dark:bg-slate-800" role="tablist">
+        <button type="button" role="tab" class="rounded-md px-3 py-1.5 font-medium transition" :class="tab === 'password' ? 'bg-white shadow-sm dark:bg-slate-700' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'" @click="tab = 'password'" :aria-selected="tab === 'password'">Con contraseña</button>
+        <button type="button" role="tab" class="rounded-md px-3 py-1.5 font-medium transition" :class="tab === 'magic' ? 'bg-white shadow-sm dark:bg-slate-700' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'" @click="tab = 'magic'" :aria-selected="tab === 'magic'">Con enlace por correo</button>
+    </div>
+
+    <form x-show="tab === 'password'" method="post" action="{{ url('/login') }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div>
+            <label for="email" class="label">Correo electrónico</label>
+            <input id="email" name="email" type="email" required autocomplete="email" autofocus class="input" value="{{ app.old('email') }}" placeholder="nombre@entidad.com">
+        </div>
+        <div>
+            <div class="flex items-center justify-between">
+                <label for="password" class="label">Contraseña</label>
+                <a href="{{ url('/forgot-password') }}" class="mb-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">¿Olvidaste tu contraseña?</a>
+            </div>
+            <div class="relative" x-data="{ show: false }">
+                <input id="password" name="password" :type="show ? 'text' : 'password'" type="password" required autocomplete="current-password" class="input pr-10">
+                <button type="button" class="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-600" @click="show = !show" :aria-label="show ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                    {{ icon('eye', 'h-4 w-4') }}
+                </button>
+            </div>
+        </div>
+        <button type="submit" class="btn-primary btn-lg w-full" :disabled="busy">
+            <svg x-show="busy" x-cloak class="h-4 w-4 animate-spin"><use href="{{ asset('icons.svg') }}#spinner"></use></svg>
+            <span x-text="busy ? 'Entrando…' : 'Entrar'">Entrar</span>
+        </button>
+    </form>
+
+    <form x-cloak x-show="tab === 'magic'" method="post" action="{{ url('/magic-link') }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <p class="text-sm text-slate-600 dark:text-slate-300">Te enviaremos un enlace de acceso a tu correo. No necesitas recordar la contraseña: ideal si solo vas a ver o descargar archivos.</p>
+        <div>
+            <label for="magic-email" class="label">Correo electrónico</label>
+            <input id="magic-email" name="email" type="email" required autocomplete="email" class="input" value="{{ app.old('email') }}" placeholder="nombre@entidad.com">
+        </div>
+        <button type="submit" class="btn-primary btn-lg w-full" :disabled="busy">
+            {{ icon('mail', 'h-4 w-4') }}
+            <span x-text="busy ? 'Enviando…' : 'Enviarme un enlace de acceso'">Enviarme un enlace de acceso</span>
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block below %}
+<p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+    ¿No tienes cuenta? El acceso es solo por invitación: pide a quien comparte contigo que te invite.
+</p>
+{% endblock %}

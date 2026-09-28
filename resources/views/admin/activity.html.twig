@@ -1,0 +1,55 @@
+{% extends 'admin/layout.html.twig' %}
+{% set pageTitle = 'Actividad' %}
+
+{% set labels = {
+    login: 'Inicio de sesión', login_failed: 'Intento fallido', logout: 'Cierre de sesión',
+    upload: 'Subida', upload_cancel: 'Subida cancelada', download: 'Descarga', download_zip: 'Descarga ZIP', preview: 'Vista previa',
+    delete: 'Archivo eliminado', rename: 'Archivo renombrado', folder_create: 'Carpeta creada', folder_rename: 'Carpeta renombrada', folder_delete: 'Carpeta eliminada',
+    share: 'Acceso compartido', invite: 'Invitación', invitation_accepted: 'Invitación aceptada', invitation_cancel: 'Invitación cancelada',
+    revoke: 'Acceso retirado', leave: 'Salió de carpeta', permission_change: 'Permiso cambiado',
+    share_link_create: 'Enlace público creado', share_link_revoke: 'Enlace público desactivado', share_link_view: 'Enlace público visto',
+    password_reset_requested: 'Recuperación solicitada', password_reset: 'Contraseña restablecida', password_changed: 'Contraseña cambiada',
+    magic_link_requested: 'Enlace de acceso solicitado', user_update: 'Usuario editado', settings_update: 'Límites cambiados',
+    entity_create: 'Entidad creada', entity_update: 'Entidad editada', entity_delete: 'Entidad eliminada'
+} %}
+
+{% block admin %}
+<form method="get" action="{{ url('/admin/activity') }}" class="grid gap-2 sm:grid-cols-5">
+    <select name="action" class="input">
+        <option value="">Todas las acciones</option>
+        {% for a in actions %}<option value="{{ a }}" {{ filters.action == a ? 'selected' : '' }}>{{ labels[a] ?? a }}</option>{% endfor %}
+    </select>
+    <input type="search" name="user" value="{{ filters.user }}" placeholder="Usuario o correo" class="input">
+    <input type="date" name="from" value="{{ filters.from }}" class="input" aria-label="Desde">
+    <input type="date" name="to" value="{{ filters.to }}" class="input" aria-label="Hasta">
+    <button class="btn-secondary">{{ icon('search', 'h-4 w-4') }} Filtrar</button>
+</form>
+
+<p class="mt-4 text-sm text-slate-500">{{ total }} evento{{ total == 1 ? '' : 's' }}</p>
+<div class="card mt-2 overflow-x-auto">
+    <table class="admin-table">
+        <thead><tr><th>Fecha</th><th>Acción</th><th>Usuario</th><th>Detalle</th><th>IP</th></tr></thead>
+        <tbody>
+        {% for e in items %}
+            {% set meta = e.meta ? e.meta|json_decode : {} %}
+            <tr>
+                <td class="whitespace-nowrap text-xs text-slate-500">{{ e.created_at|local_date('d/m/Y H:i:s') }}</td>
+                <td class="whitespace-nowrap"><span class="{{ e.action in ['delete', 'folder_delete', 'login_failed', 'revoke'] ? 'badge-red' : (e.action in ['upload', 'download', 'download_zip'] ? 'badge-brand' : 'badge-gray') }}">{{ labels[e.action] ?? e.action }}</span></td>
+                <td class="text-xs">
+                    {% if e.user_name %}<p class="font-medium text-slate-800 dark:text-slate-100">{{ e.user_name }}</p><p class="text-slate-500">{{ e.user_email }}</p>
+                    {% elseif e.share_link_id %}<span class="text-slate-500">Enlace público</span>
+                    {% else %}<span class="text-slate-400">—</span>{% endif %}
+                </td>
+                <td class="max-w-md text-xs text-slate-600 dark:text-slate-300">
+                    {% for k, v in meta %}{% if v is not iterable %}<span class="mr-2"><span class="text-slate-400">{{ k }}:</span> {{ k in ['size', 'bytes'] ? v|bytes : v }}</span>{% endif %}{% endfor %}
+                </td>
+                <td class="whitespace-nowrap font-mono text-xs text-slate-500">{{ e.ip }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" class="py-8 text-center text-slate-500">No hay eventos con estos filtros.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include 'admin/_pagination.html.twig' with { base: url('/admin/activity') ~ '?action=' ~ filters.action|url_encode ~ '&user=' ~ filters.user|url_encode ~ '&from=' ~ filters.from ~ '&to=' ~ filters.to ~ '&' } %}
+{% endblock %}

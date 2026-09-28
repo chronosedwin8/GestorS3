@@ -1,0 +1,88 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block body %}
+<div class="flex min-h-full flex-col">
+    <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-900/85">
+        <div class="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
+            <a href="{{ url('/') }}" data-spa-home class="flex shrink-0 items-center gap-2.5 text-slate-900 dark:text-white" title="Ir al inicio">
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+                    {{ icon('folder-up', 'h-5 w-5') }}
+                </span>
+                <span class="hidden text-base font-semibold tracking-tight md:block">{{ app.name }}</span>
+            </a>
+
+            {% if app.user %}
+            {# Búsqueda global #}
+            <div class="relative mx-auto w-full max-w-xl" x-data="globalSearch" @keydown.escape="close()" @click.outside="close()">
+                <label for="global-search" class="sr-only">Buscar carpetas y archivos</label>
+                <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    {{ icon('search', 'h-4 w-4') }}
+                </div>
+                <input id="global-search" type="search" autocomplete="off" placeholder="Buscar carpetas y archivos…"
+                       class="input rounded-full border-slate-200 bg-slate-100/80 pl-9 shadow-none focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+                       x-model="q" @input.debounce.250ms="search()" @focus="open = q.length >= 2" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="choose()">
+                <div x-cloak x-show="open" x-transition.opacity class="menu left-0 right-0 max-h-[70vh] overflow-y-auto" role="listbox">
+                    <template x-if="loading"><p class="px-4 py-3 text-sm text-slate-500">Buscando…</p></template>
+                    <template x-if="!loading && total === 0"><p class="px-4 py-3 text-sm text-slate-500">No encontramos resultados para “<span x-text="q"></span>”.</p></template>
+                    <template x-if="!loading && results.folders.length">
+                        <p class="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Carpetas</p>
+                    </template>
+                    <template x-for="(f, i) in results.folders" :key="'f' + f.uuid">
+                        <button type="button" class="menu-item" :class="active === i && 'bg-slate-50 dark:bg-slate-700/60'" @click="goFolder(f.uuid)">
+                            <svg class="h-5 w-5 shrink-0 text-amber-500"><use :href="icons + '#folder'"></use></svg>
+                            <span class="min-w-0"><span class="block truncate font-medium" x-text="f.name"></span><span class="block truncate text-xs text-slate-500" x-text="f.path"></span></span>
+                        </button>
+                    </template>
+                    <template x-if="!loading && results.files.length">
+                        <p class="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Archivos</p>
+                    </template>
+                    <template x-for="(f, i) in results.files" :key="'a' + f.uuid">
+                        <button type="button" class="menu-item" :class="active === results.folders.length + i && 'bg-slate-50 dark:bg-slate-700/60'" @click="goFile(f)">
+                            <svg class="h-5 w-5 shrink-0" :class="kindColor(f.kind)"><use :href="icons + '#' + kindIcon(f.kind)"></use></svg>
+                            <span class="min-w-0"><span class="block truncate font-medium" x-text="f.name"></span><span class="block truncate text-xs text-slate-500" x-text="f.path + ' · ' + bytes(f.size)"></span></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <nav class="ml-auto flex shrink-0 items-center gap-1" aria-label="Principal">
+                {% if app.isAdmin %}
+                <a href="{{ url('/admin') }}" class="btn-ghost hidden sm:inline-flex {{ app.path starts with '/admin' ? 'bg-slate-100 dark:bg-slate-800' : '' }}">
+                    {{ icon('shield', 'h-4 w-4') }} Administración
+                </a>
+                {% endif %}
+                <div class="relative" x-data="{ open: false }" @keydown.escape="open = false" @click.outside="open = false">
+                    <button type="button" class="flex items-center gap-2 rounded-full p-1 pr-2 hover:bg-slate-100 dark:hover:bg-slate-800" @click="open = !open" :aria-expanded="open" aria-haspopup="true">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ app.user.name|first|upper }}</span>
+                        <span class="hidden max-w-[10rem] truncate text-sm font-medium lg:block">{{ app.user.name }}</span>
+                        {{ icon('chevron-down', 'h-4 w-4 text-slate-400') }}
+                    </button>
+                    <div x-cloak x-show="open" x-transition.origin.top.right class="menu right-0 w-64">
+                        <div class="border-b border-slate-100 px-3 py-2.5 dark:border-slate-700">
+                            <p class="truncate text-sm font-medium">{{ app.user.name }}</p>
+                            <p class="truncate text-xs text-slate-500">{{ app.user.email }}</p>
+                            {% if app.user.entity_name %}<p class="mt-1 truncate text-xs text-slate-500">{{ icon('building', 'inline h-3.5 w-3.5 -mt-0.5') }} {{ app.user.entity_name }}</p>{% endif %}
+                        </div>
+                        <a href="{{ url('/') }}" data-spa-home class="menu-item">{{ icon('home', 'h-4 w-4') }} Mis carpetas</a>
+                        <a href="{{ url('/profile') }}" class="menu-item">{{ icon('user', 'h-4 w-4') }} Mi perfil</a>
+                        {% if app.isAdmin %}<a href="{{ url('/admin') }}" class="menu-item sm:hidden">{{ icon('shield', 'h-4 w-4') }} Administración</a>{% endif %}
+                        <form method="post" action="{{ url('/logout') }}" class="border-t border-slate-100 dark:border-slate-700">
+                            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+                            <button type="submit" class="menu-item">{{ icon('logout', 'h-4 w-4') }} Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
+            </nav>
+            {% endif %}
+        </div>
+    </header>
+
+    <main id="main" class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{% if app.user %}
+    {% include 'partials/upload-panel.html.twig' %}
+{% endif %}
+{% endblock %}

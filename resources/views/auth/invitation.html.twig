@@ -1,0 +1,56 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Crear tu cuenta' %}
+
+{% block content %}
+<div class="rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-100">
+    <p><strong>{{ invitation.inviter_name }}</strong> te invitó
+    {% if invitation.folder_name %}
+        a la carpeta <strong>“{{ invitation.folder_name }}”</strong>
+        {% if invitation.permission %}<span class="whitespace-nowrap">como <strong>{{ invitation.permission|perm_label|lower }}</strong></span>{% endif %}.
+    {% else %}
+        a {{ app.name }}.
+    {% endif %}
+    </p>
+</div>
+
+<h1 class="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Crea tu cuenta</h1>
+<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Solo toma un minuto.</p>
+
+<form method="post" action="{{ url('/invitation/' ~ token) }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
+    <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+    <div>
+        <label class="label">Correo electrónico</label>
+        <p class="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ invitation.email }}</p>
+    </div>
+    <div>
+        <label for="name" class="label">Tu nombre completo</label>
+        <input id="name" name="name" required maxlength="150" autocomplete="name" class="input" value="{{ app.old('name') }}" autofocus placeholder="Ej.: María Pérez">
+    </div>
+    {% if invitation.entity_name %}
+        <div>
+            <label class="label">Entidad u organización</label>
+            <p class="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ invitation.entity_name }}</p>
+        </div>
+    {% else %}
+        <div>
+            <label for="entity" class="label">Entidad u organización <span class="font-normal text-slate-400">(opcional)</span></label>
+            <input id="entity" name="entity" list="entities" maxlength="190" class="input" value="{{ app.old('entity') }}" placeholder="¿Dónde trabajas?">
+            <datalist id="entities">
+                {% for e in entities %}<option value="{{ e.name }}">{% endfor %}
+            </datalist>
+        </div>
+    {% endif %}
+    <div>
+        <label for="password" class="label">Contraseña</label>
+        <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" class="input">
+        <p class="hint">Mínimo 8 caracteres.</p>
+    </div>
+    <div>
+        <label for="password_confirmation" class="label">Repite la contraseña</label>
+        <input id="password_confirmation" name="password_confirmation" type="password" required minlength="8" autocomplete="new-password" class="input">
+    </div>
+    <button type="submit" class="btn-primary btn-lg w-full" :disabled="busy">
+        <span x-text="busy ? 'Creando tu cuenta…' : 'Crear cuenta y entrar'">Crear cuenta y entrar</span>
+    </button>
+</form>
+{% endblock %}

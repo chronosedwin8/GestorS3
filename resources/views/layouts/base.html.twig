@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}{% if pageTitle is defined and pageTitle %}{{ pageTitle }} · {% endif %}{{ app.name }}{% endblock %}</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="preload" href="{{ url('assets/fonts/inter-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    {{ json_script(app.jsConfig, 'app-config') }}
+    {{ json_script(app.flashes, 'app-flashes') }}
+    {% block head %}{% endblock %}
+    <script type="module" src="{{ asset('js/app.js') }}"></script>
+</head>
+<body class="h-full bg-slate-50 font-sans text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200" {% block body_attrs %}{% endblock %}>
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:shadow">Saltar al contenido</a>
+    {% block body %}{% endblock %}
+    {% include 'partials/toasts.html.twig' %}
+</body>
+</html>

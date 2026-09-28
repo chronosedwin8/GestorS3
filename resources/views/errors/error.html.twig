@@ -1,0 +1,19 @@
+{% extends app.user ? 'layouts/app.html.twig' : 'layouts/auth.html.twig' %}
+{% set pageTitle = status == 404 ? 'No encontrado' : 'Error' %}
+
+{% block content %}
+<div class="{{ app.user ? 'mx-auto max-w-lg px-4 py-20' : '' }} text-center">
+    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full {{ status >= 500 ? 'bg-red-50 text-red-600 dark:bg-red-500/15' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15' }}">
+        {{ icon(status == 404 ? 'search' : 'alert', 'h-7 w-7') }}
+    </span>
+    <p class="mt-4 text-sm font-semibold text-slate-400">Error {{ status }}</p>
+    <h1 class="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+        {% if status == 404 %}No encontramos lo que buscas{% elseif code == 'csrf_invalid' %}La página expiró{% elseif status == 403 %}Acceso no permitido{% elseif status == 429 %}Demasiados intentos{% else %}Algo salió mal{% endif %}
+    </h1>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ message }}</p>
+    {% if debug %}<pre class="mt-4 overflow-x-auto rounded-lg bg-slate-900 p-3 text-left text-xs text-red-200">{{ debug }}</pre>{% endif %}
+    <div class="mt-6 flex justify-center gap-2">
+        <a href="{{ url('/') }}" class="btn-primary">Ir al inicio</a>
+    </div>
+</div>
+{% endblock %}

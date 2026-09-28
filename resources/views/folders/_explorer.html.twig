@@ -1,0 +1,376 @@
+{# Explorador compartido por la app (mode=app) y los enlaces públicos (mode=public). #}
+{% set public = mode == 'public' %}
+<div x-data="explorer" x-cloak
+     @keydown.window="onKeydown($event)"
+     @dragenter.window="onDragEnter($event)" @dragover.window="onDragOver($event)"
+     @dragleave.window="onDragLeave($event)" @drop.window="onDrop($event)"
+     @click.window="menu && closeMenu()" @resize.window="menu = null"
+     class="mx-auto max-w-7xl px-4 pb-32 pt-6 sm:px-6 lg:pt-8">
+
+    <iframe name="download-frame" class="hidden" title="Descargas" tabindex="-1" aria-hidden="true"></iframe>
+    {% if not public %}
+    <input type="file" multiple class="hidden" x-ref="fileInput" @change="onPicked($event)" aria-hidden="true" tabindex="-1">
+    <input type="file" multiple webkitdirectory directory class="hidden" x-ref="folderInput" @change="onPicked($event)" aria-hidden="true" tabindex="-1">
+    {% endif %}
+
+    {# ---------------------------------------------------------------- Capa de arrastre #}
+    <div x-show="dragging && view === 'folder' && caps.upload" x-transition.opacity class="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-brand-600/10 p-6 backdrop-blur-[1px]">
+        <div class="rounded-2xl border-2 border-dashed border-brand-500 bg-white/95 px-10 py-12 text-center shadow-panel dark:bg-slate-900/95">
+            {{ icon('cloud-upload', 'mx-auto h-12 w-12 text-brand-600') }}
+            <p class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Suelta para subir a “<span x-text="data && data.folder.name"></span>”</p>
+            <p class="mt-1 text-sm text-slate-500">Puedes soltar varios archivos y carpetas completas.</p>
+        </div>
+    </div>
+
+    {# ---------------------------------------------------------------- Barra de carga #}
+    <div x-show="loading" class="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-brand-100">
+        <div class="h-full w-1/3 animate-shimmer bg-brand-600"></div>
+    </div>
+
+    {% if not public %}
+    {# ================================================================ INICIO #}
+    <template x-if="view === 'home'">
+        <section aria-labelledby="home-title">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h1 id="home-title" class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Hola, {{ app.user.name|split(' ')|first }}</h1>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Crea una carpeta, sube tus archivos y compártela con quien necesites.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div class="relative">
+                        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icon('search', 'h-4 w-4') }}</span>
+                        <input type="search" x-model="homeFilter" placeholder="Filtrar por nombre…" class="input pl-9 sm:w-60" aria-label="Filtrar carpetas por nombre">
+                    </div>
+                    <button type="button" class="btn-primary" @click="openNewFolder(true)">{{ icon('folder-plus', 'h-4 w-4') }} Nueva carpeta</button>
+                </div>
+            </div>
+
+            <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Mis carpetas <span class="font-normal" x-text="'(' + home.mine.length + ')'"></span></h2>
+            <template x-if="!home.mine.length">
+                <button type="button" @click="openNewFolder(true)" class="mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 px-6 py-12 text-center transition hover:border-brand-400 hover:bg-brand-50/40 dark:border-slate-700 dark:hover:bg-brand-500/5">
+                    {{ icon('folder-plus', 'h-10 w-10 text-brand-500') }}
+                    <span class="mt-3 font-semibold text-slate-800 dark:text-slate-100">Crea tu primera carpeta</span>
+                    <span class="mt-1 max-w-sm text-sm text-slate-500">Dentro podrás subir archivos de cualquier tipo y compartirla con otras personas.</span>
+                </button>
+            </template>
+            <template x-if="home.mine.length && !mineFiltered.length">
+                <p class="mt-3 text-sm text-slate-500">Ninguna de tus carpetas coincide con “<span x-text="homeFilter"></span>”.</p>
+            </template>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <template x-for="f in mineFiltered" :key="f.uuid">
+                    <a :href="folderHref(f.uuid)" @click.prevent="navigate(f.uuid)" class="card group flex flex-col p-4 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md dark:hover:border-brand-500/50">
+                        <div class="flex items-start gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-500/10">{{ icon('folder', 'h-6 w-6') }}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate font-semibold text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300" x-text="f.name"></p>
+                                <p class="truncate text-xs text-slate-500" x-text="f.description || 'Sin descripción'"></p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                            <span x-text="plural(f.filesCount, 'archivo', 'archivos') + ' · ' + bytes(f.size)"></span>
+                            <span x-text="relative(f.lastActivityAt)" :title="dateTime(f.lastActivityAt)"></span>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
+            <h2 class="mt-10 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Compartidas conmigo <span class="font-normal" x-text="'(' + home.shared.length + ')'"></span></h2>
+            <template x-if="!home.shared.length">
+                <div class="mt-3 rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                    {{ icon('users', 'mx-auto h-8 w-8 text-slate-300') }}
+                    <p class="mt-2">Cuando alguien comparta una carpeta contigo, aparecerá aquí.</p>
+                </div>
+            </template>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <template x-for="f in sharedFiltered" :key="f.uuid">
+                    <a :href="folderHref(f.uuid)" @click.prevent="navigate(f.uuid)" class="card group flex flex-col p-4 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md dark:hover:border-brand-500/50">
+                        <div class="flex items-start gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">{{ icon('folder', 'h-6 w-6') }}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate font-semibold text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300" x-text="f.name"></p>
+                                <p class="truncate text-xs text-slate-500">
+                                    <span x-text="f.ownerName"></span><template x-if="f.ownerEntity"><span x-text="' · ' + f.ownerEntity"></span></template>
+                                </p>
+                            </div>
+                            <span class="badge-gray shrink-0" x-text="f.permission === 'editor' ? 'Editor' : (f.permission === 'owner' ? 'Propietario' : 'Lector')"></span>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                            <span x-text="plural(f.filesCount, 'archivo', 'archivos') + ' · ' + bytes(f.size)"></span>
+                            <span x-text="relative(f.lastActivityAt)" :title="dateTime(f.lastActivityAt)"></span>
+                        </div>
+                    </a>
+                </template>
+            </div>
+        </section>
+    </template>
+    {% endif %}
+
+    {# ================================================================ CARPETA #}
+    <template x-if="view === 'folder' && data">
+        <section aria-labelledby="folder-title">
+            {# Ruta #}
+            <nav aria-label="Ruta de la carpeta" class="flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                {% if not public %}
+                <a href="{{ url('/') }}" @click.prevent="navigate(null)" class="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200">{{ icon('home', 'h-4 w-4') }} <span class="hidden sm:inline">Mis carpetas</span></a>
+                {% endif %}
+                <template x-for="(crumb, i) in data.breadcrumb" :key="crumb.uuid">
+                    <span class="flex items-center gap-1">
+                        <template x-if="i > 0 || {{ public ? 'false' : 'true' }}">{{ icon('chevron-right', 'h-4 w-4 text-slate-300') }}</template>
+                        <template x-if="i < data.breadcrumb.length - 1">
+                            <a :href="folderHref(crumb.uuid)" @click.prevent="navigate(crumb.uuid)" class="max-w-[12rem] truncate rounded px-1 py-0.5 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200" x-text="crumb.name"></a>
+                        </template>
+                        <template x-if="i === data.breadcrumb.length - 1">
+                            <span class="max-w-[16rem] truncate px-1 font-medium text-slate-700 dark:text-slate-200" aria-current="page" x-text="crumb.name"></span>
+                        </template>
+                    </span>
+                </template>
+            </nav>
+
+            {# Encabezado #}
+            <div class="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0">
+                    <h1 id="folder-title" class="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                        <span class="truncate" x-text="data.folder.name"></span>
+                        {% if not public %}
+                        <span class="badge-gray shrink-0 text-xs font-medium" x-text="data.permission === 'owner' ? 'Propietario' : (data.permission === 'editor' ? 'Editor' : 'Solo lectura')"></span>
+                        {% endif %}
+                    </h1>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {% if public %}
+                            Compartido por <span x-text="data.folder.ownerName"></span><template x-if="data.folder.ownerEntity"><span x-text="' · ' + data.folder.ownerEntity"></span></template>
+                        {% else %}
+                            <span x-text="'De ' + data.folder.ownerName"></span><template x-if="data.folder.ownerEntity"><span x-text="' · ' + data.folder.ownerEntity"></span></template>
+                        {% endif %}
+                        <span x-text="' · ' + plural(data.files.length, 'archivo', 'archivos') + (data.folders.length ? ', ' + plural(data.folders.length, 'carpeta', 'carpetas') : '')"></span>
+                    </p>
+                    <template x-if="data.folder.isRoot && data.folder.description">
+                        <p class="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300" x-text="data.folder.description"></p>
+                    </template>
+                </div>
+
+                {# Acciones #}
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if not public %}
+                    <template x-if="caps.upload">
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" class="btn-primary" @click="pickFiles()">{{ icon('upload', 'h-4 w-4') }} Subir archivos</button>
+                            <button type="button" class="btn-secondary" @click="pickFolder()">{{ icon('folder-up', 'h-4 w-4') }} Subir carpeta</button>
+                            <button type="button" class="btn-secondary" @click="openNewFolder(false)">{{ icon('folder-plus', 'h-4 w-4') }} <span class="hidden sm:inline">Nueva subcarpeta</span><span class="sm:hidden">Carpeta</span></button>
+                        </div>
+                    </template>
+                    {% endif %}
+                    <button type="button" class="btn-secondary" @click="openZip(false)" :disabled="!data.files.length && !data.folders.length">{{ icon('archive', 'h-4 w-4') }} Descargar todo</button>
+                    {% if not public %}
+                    <button type="button" class="btn-secondary" @click="openShare()">{{ icon('users', 'h-4 w-4') }} <span x-text="caps.invite ? 'Compartir' : 'Personas'"></span></button>
+                    <template x-if="caps.rename || caps.deleteFolder">
+                        <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.stop="open = false">
+                            <button type="button" class="btn-icon h-9 w-9" @click="open = !open" aria-label="Más acciones de la carpeta" :aria-expanded="open">{{ icon('dots', 'h-5 w-5') }}</button>
+                            <div x-show="open" x-transition.origin.top.right class="menu right-0 w-56">
+                                <template x-if="caps.rename">
+                                    <button type="button" class="menu-item" @click="open = false; openRename('folder', data.folder)">{{ icon('pencil', 'h-4 w-4') }} Renombrar carpeta</button>
+                                </template>
+                                <template x-if="caps.deleteFolder">
+                                    <button type="button" class="menu-item-danger" @click="open = false; askDeleteCurrent()">{{ icon('trash', 'h-4 w-4') }} Eliminar carpeta</button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Barra de selección / vista #}
+            <div class="sticky top-16 z-20 -mx-4 mt-6 flex min-h-[3rem] items-center justify-between gap-3 bg-slate-50/90 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 dark:bg-slate-950/90">
+                <div class="flex min-w-0 items-center gap-2 text-sm">
+                    <template x-if="selectionCount">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" class="btn-icon" @click="clearSelection()" aria-label="Quitar selección">{{ icon('x', 'h-4 w-4') }}</button>
+                            <span class="font-medium text-slate-800 dark:text-slate-100" x-text="plural(selectionCount, 'seleccionado', 'seleccionados')"></span>
+                            <span class="text-slate-500" x-text="'· ' + bytes(selectionSize)"></span>
+                            <button type="button" class="btn-secondary btn-sm" @click="openZip(true)">{{ icon('download', 'h-4 w-4') }} Descargar ZIP</button>
+                            {% if not public %}
+                            <template x-if="caps.deleteItems">
+                                <button type="button" class="btn-sm btn text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" @click="askDeleteSelection()">{{ icon('trash', 'h-4 w-4') }} Eliminar</button>
+                            </template>
+                            {% endif %}
+                        </div>
+                    </template>
+                    <template x-if="!selectionCount">
+                        <span class="text-slate-500 dark:text-slate-400" x-text="isEmpty ? '' : plural(data.folders.length + data.files.length, 'elemento', 'elementos') + ' · ' + bytes(totalSize)"></span>
+                    </template>
+                </div>
+                <div class="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800" role="group" aria-label="Tipo de vista">
+                    <button type="button" class="rounded-md p-1.5" :class="layout === 'list' ? 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-white' : 'text-slate-400 hover:text-slate-600'" @click="setLayout('list')" aria-label="Vista de lista" :aria-pressed="layout === 'list'">{{ icon('list', 'h-4 w-4') }}</button>
+                    <button type="button" class="rounded-md p-1.5" :class="layout === 'grid' ? 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-white' : 'text-slate-400 hover:text-slate-600'" @click="setLayout('grid')" aria-label="Vista de cuadrícula" :aria-pressed="layout === 'grid'">{{ icon('grid', 'h-4 w-4') }}</button>
+                </div>
+            </div>
+
+            {# Estado vacío #}
+            <template x-if="isEmpty">
+                <div class="mt-4">
+                    {% if not public %}
+                    <template x-if="caps.upload">
+                        <button type="button" @click="pickFiles()" class="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-20 text-center transition hover:border-brand-400 hover:bg-brand-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-brand-500/5">
+                            <span class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15">{{ icon('cloud-upload', 'h-8 w-8') }}</span>
+                            <span class="mt-4 text-lg font-semibold text-slate-800 dark:text-slate-100">Arrastra tus archivos aquí o haz clic para seleccionarlos</span>
+                            <span class="mt-1 text-sm text-slate-500">Puedes subir varios archivos a la vez, de cualquier tipo, o una carpeta completa.</span>
+                        </button>
+                    </template>
+                    {% endif %}
+                    <template x-if="!caps.upload">
+                        <div class="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center dark:border-slate-800 dark:bg-slate-900">
+                            {{ icon('folder', 'mx-auto h-10 w-10 text-slate-300') }}
+                            <p class="mt-3 font-medium text-slate-700 dark:text-slate-200">Esta carpeta está vacía</p>
+                            <p class="mt-1 text-sm text-slate-500">Cuando se agreguen archivos, aparecerán aquí.</p>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            {# ---------------------------------------------------------- Vista de lista #}
+            <template x-if="!isEmpty && layout === 'list'">
+                <div class="card mt-2 overflow-hidden">
+                    <table class="w-full table-fixed">
+                        <thead class="border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/60">
+                            <tr>
+                                <th scope="col" class="w-10 py-2.5 pl-4 pr-1">
+                                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" :checked="allSelected" @change="toggleAll()" aria-label="Seleccionar todo">
+                                </th>
+                                <th scope="col" class="table-head" :aria-sort="ariaSort('name')">
+                                    <button type="button" class="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200" @click="sortBy('name')">Nombre <template x-if="sortIcon('name')"><svg class="h-3.5 w-3.5"><use :href="icons + '#' + sortIcon('name')"></use></svg></template></button>
+                                </th>
+                                <th scope="col" class="table-head hidden w-28 sm:table-cell" :aria-sort="ariaSort('size')">
+                                    <button type="button" class="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200" @click="sortBy('size')">Tamaño <template x-if="sortIcon('size')"><svg class="h-3.5 w-3.5"><use :href="icons + '#' + sortIcon('size')"></use></svg></template></button>
+                                </th>
+                                {% if not public %}
+                                <th scope="col" class="table-head hidden w-44 lg:table-cell" :aria-sort="ariaSort('owner')">
+                                    <button type="button" class="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200" @click="sortBy('owner')">Subido por <template x-if="sortIcon('owner')"><svg class="h-3.5 w-3.5"><use :href="icons + '#' + sortIcon('owner')"></use></svg></template></button>
+                                </th>
+                                {% endif %}
+                                <th scope="col" class="table-head hidden w-40 md:table-cell" :aria-sort="ariaSort('date')">
+                                    <button type="button" class="inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200" @click="sortBy('date')">Fecha <template x-if="sortIcon('date')"><svg class="h-3.5 w-3.5"><use :href="icons + '#' + sortIcon('date')"></use></svg></template></button>
+                                </th>
+                                <th scope="col" class="w-24 pr-3"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <template x-for="f in folders" :key="'d' + f.uuid">
+                                <tr class="group cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-800/50" :class="isSelected('folder', f.uuid) && 'bg-brand-50/70 dark:bg-brand-500/10'"
+                                    @dblclick="navigate(f.uuid)" @contextmenu="openMenu('folder', f, $event)">
+                                    <td class="py-2.5 pl-4 pr-1"><input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" :checked="isSelected('folder', f.uuid)" @change="toggle('folder', f.uuid)" :aria-label="'Seleccionar ' + f.name" @click.stop></td>
+                                    <td class="table-cell">
+                                        <a :href="folderHref(f.uuid)" @click.prevent="navigate(f.uuid)" class="flex min-w-0 items-center gap-3">
+                                            <svg class="h-6 w-6 shrink-0 text-amber-500"><use :href="icons + '#folder'"></use></svg>
+                                            <span class="min-w-0">
+                                                <span class="block truncate font-medium text-slate-800 hover:text-brand-700 dark:text-slate-100 dark:hover:text-brand-300" x-text="f.name"></span>
+                                                <span class="block truncate text-xs text-slate-500 sm:hidden" x-text="plural(f.filesCount, 'archivo', 'archivos') + ' · ' + bytes(f.size)"></span>
+                                            </span>
+                                        </a>
+                                    </td>
+                                    <td class="table-cell hidden text-slate-500 sm:table-cell"><span x-text="bytes(f.size)"></span><span class="block text-xs text-slate-400" x-text="plural(f.filesCount, 'archivo', 'archivos')"></span></td>
+                                    {% if not public %}<td class="table-cell hidden truncate text-slate-500 lg:table-cell" x-text="f.ownerName || '—'"></td>{% endif %}
+                                    <td class="table-cell hidden text-slate-500 md:table-cell" x-text="date(f.lastActivityAt || f.updatedAt)" :title="dateTime(f.lastActivityAt || f.updatedAt)"></td>
+                                    <td class="pr-3 text-right">
+                                        <button type="button" class="btn-icon" @click="openMenu('folder', f, $event)" :aria-label="'Acciones para ' + f.name">{{ icon('dots', 'h-5 w-5') }}</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="f in files" :key="'a' + f.uuid">
+                                <tr class="group transition hover:bg-slate-50 dark:hover:bg-slate-800/50" :data-file="f.uuid"
+                                    :class="[isSelected('file', f.uuid) && 'bg-brand-50/70 dark:bg-brand-500/10', highlight === f.uuid && 'ring-2 ring-inset ring-brand-400']"
+                                    @contextmenu="openMenu('file', f, $event)">
+                                    <td class="py-2.5 pl-4 pr-1"><input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" :checked="isSelected('file', f.uuid)" @change="toggle('file', f.uuid)" :aria-label="'Seleccionar ' + f.name"></td>
+                                    <td class="table-cell">
+                                        <button type="button" class="flex w-full min-w-0 items-center gap-3 text-left" @click="openPreview(f)" :title="f.previewable ? 'Ver ' + f.name : 'Descargar ' + f.name">
+                                            <svg class="h-6 w-6 shrink-0" :class="kindColor(f.kind)"><use :href="icons + '#' + kindIcon(f.kind)"></use></svg>
+                                            <span class="min-w-0">
+                                                <span class="flex items-center gap-2">
+                                                    <span class="truncate font-medium text-slate-800 hover:text-brand-700 dark:text-slate-100 dark:hover:text-brand-300" x-text="f.name"></span>
+                                                    <template x-if="f.version > 1"><span class="badge-gray shrink-0" x-text="'v' + f.version" title="Versión"></span></template>
+                                                    <template x-if="downloading[f.uuid]"><span class="badge-brand shrink-0">{{ icon('spinner', 'h-3 w-3 animate-spin') }} Descargando…</span></template>
+                                                </span>
+                                                <span class="block truncate text-xs text-slate-500 sm:hidden" x-text="bytes(f.size) + ' · ' + date(f.createdAt)"></span>
+                                            </span>
+                                        </button>
+                                    </td>
+                                    <td class="table-cell hidden text-slate-500 sm:table-cell" x-text="bytes(f.size)"></td>
+                                    {% if not public %}<td class="table-cell hidden truncate text-slate-500 lg:table-cell" x-text="f.uploadedBy || '—'"></td>{% endif %}
+                                    <td class="table-cell hidden text-slate-500 md:table-cell" x-text="date(f.createdAt)" :title="dateTime(f.createdAt)"></td>
+                                    <td class="whitespace-nowrap pr-3 text-right">
+                                        <button type="button" class="btn-icon opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100" @click="download(f)" :aria-label="'Descargar ' + f.name" title="Descargar">{{ icon('download', 'h-4 w-4') }}</button>
+                                        <button type="button" class="btn-icon" @click="openMenu('file', f, $event)" :aria-label="'Acciones para ' + f.name">{{ icon('dots', 'h-5 w-5') }}</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            {# ---------------------------------------------------------- Vista de cuadrícula #}
+            <template x-if="!isEmpty && layout === 'grid'">
+                <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                    <template x-for="f in folders" :key="'gd' + f.uuid">
+                        <div class="card group relative flex flex-col items-center p-4 text-center transition hover:border-brand-300 hover:shadow-md" :class="isSelected('folder', f.uuid) && 'border-brand-400 ring-2 ring-brand-200 dark:ring-brand-500/30'" @contextmenu="openMenu('folder', f, $event)">
+                            <input type="checkbox" class="absolute left-2.5 top-2.5 h-4 w-4 rounded border-slate-300 text-brand-600 opacity-0 focus:opacity-100 group-hover:opacity-100" :class="isSelected('folder', f.uuid) && '!opacity-100'" :checked="isSelected('folder', f.uuid)" @change="toggle('folder', f.uuid)" :aria-label="'Seleccionar ' + f.name">
+                            <button type="button" class="btn-icon absolute right-1.5 top-1.5" @click="openMenu('folder', f, $event)" :aria-label="'Acciones para ' + f.name">{{ icon('dots', 'h-4 w-4') }}</button>
+                            <a :href="folderHref(f.uuid)" @click.prevent="navigate(f.uuid)" class="flex w-full flex-col items-center">
+                                <svg class="h-14 w-14 text-amber-500"><use :href="icons + '#folder'"></use></svg>
+                                <span class="mt-2 w-full truncate text-sm font-medium" x-text="f.name"></span>
+                                <span class="text-xs text-slate-500" x-text="plural(f.filesCount, 'archivo', 'archivos')"></span>
+                            </a>
+                        </div>
+                    </template>
+                    <template x-for="f in files" :key="'ga' + f.uuid">
+                        <div class="card group relative flex flex-col items-center p-4 text-center transition hover:border-brand-300 hover:shadow-md" :data-file="f.uuid" :class="[isSelected('file', f.uuid) && 'border-brand-400 ring-2 ring-brand-200 dark:ring-brand-500/30', highlight === f.uuid && 'ring-2 ring-brand-400']" @contextmenu="openMenu('file', f, $event)">
+                            <input type="checkbox" class="absolute left-2.5 top-2.5 h-4 w-4 rounded border-slate-300 text-brand-600 opacity-0 focus:opacity-100 group-hover:opacity-100" :class="isSelected('file', f.uuid) && '!opacity-100'" :checked="isSelected('file', f.uuid)" @change="toggle('file', f.uuid)" :aria-label="'Seleccionar ' + f.name">
+                            <button type="button" class="btn-icon absolute right-1.5 top-1.5" @click="openMenu('file', f, $event)" :aria-label="'Acciones para ' + f.name">{{ icon('dots', 'h-4 w-4') }}</button>
+                            <button type="button" class="flex w-full flex-col items-center" @click="openPreview(f)">
+                                <svg class="h-14 w-14" :class="kindColor(f.kind)"><use :href="icons + '#' + kindIcon(f.kind)"></use></svg>
+                                <span class="mt-2 w-full truncate text-sm font-medium" x-text="f.name" :title="f.name"></span>
+                                <span class="text-xs text-slate-500" x-text="downloading[f.uuid] ? 'Descargando…' : bytes(f.size)"></span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </section>
+    </template>
+
+    {# ================================================================ Menú contextual #}
+    <div x-show="menu" x-transition.opacity.duration.100ms class="menu fixed mt-0 w-56" :style="menu ? 'left:' + menu.x + 'px;top:' + menu.y + 'px' : ''" @click.stop role="menu">
+        <template x-if="menu && menu.type === 'file'">
+            <div>
+                <template x-if="menu.item.previewable">
+                    <button type="button" class="menu-item" @click="openPreview(menu.item)" role="menuitem">{{ icon('eye', 'h-4 w-4') }} Ver</button>
+                </template>
+                <button type="button" class="menu-item" @click="download(menu.item)" role="menuitem">{{ icon('download', 'h-4 w-4') }} Descargar</button>
+                {% if not public %}
+                <template x-if="caps.deleteItems">
+                    <button type="button" class="menu-item" @click="openRename('file', menu.item)" role="menuitem">{{ icon('pencil', 'h-4 w-4') }} Renombrar</button>
+                </template>
+                <button type="button" class="menu-item" @click="openDetails(menu.item)" role="menuitem">{{ icon('info', 'h-4 w-4') }} Detalles</button>
+                <template x-if="caps.deleteItems">
+                    <button type="button" class="menu-item-danger border-t border-slate-100 dark:border-slate-700" @click="askDeleteFile(menu.item)" role="menuitem">{{ icon('trash', 'h-4 w-4') }} Eliminar</button>
+                </template>
+                {% endif %}
+            </div>
+        </template>
+        <template x-if="menu && menu.type === 'folder'">
+            <div>
+                <button type="button" class="menu-item" @click="navigate(menu.item.uuid)" role="menuitem">{{ icon('folder', 'h-4 w-4') }} Abrir</button>
+                <button type="button" class="menu-item" @click="selFiles = []; selFolders = [menu.item.uuid]; menu = null; openZip(true)" role="menuitem">{{ icon('archive', 'h-4 w-4') }} Descargar ZIP</button>
+                {% if not public %}
+                <template x-if="caps.createFolder">
+                    <button type="button" class="menu-item" @click="openRename('folder', menu.item)" role="menuitem">{{ icon('pencil', 'h-4 w-4') }} Renombrar</button>
+                </template>
+                <template x-if="caps.deleteItems">
+                    <button type="button" class="menu-item-danger border-t border-slate-100 dark:border-slate-700" @click="askDeleteFolder(menu.item)" role="menuitem">{{ icon('trash', 'h-4 w-4') }} Eliminar</button>
+                </template>
+                {% endif %}
+            </div>
+        </template>
+    </div>
+
+    {% include 'folders/_modals.html.twig' %}
+</div>

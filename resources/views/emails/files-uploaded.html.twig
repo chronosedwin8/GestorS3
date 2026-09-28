@@ -1,0 +1,8 @@
+{% extends 'emails/layout.html.twig' %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Hay archivos nuevos</h1>
+<p style="margin:0 0 12px;">Hola {{ name }},</p>
+<p style="margin:0;"><strong>{{ actorName }}</strong> subió <strong>{{ count }} {{ count == 1 ? 'archivo' : 'archivos' }}</strong> a <strong>“{{ folderPath }}”</strong>.</p>
+{% include 'emails/_button.html.twig' with { url: url, label: 'Ver archivos' } %}
+{% endblock %}
+{% block footer %}Recibes este aviso porque tienes acceso a esta carpeta en {{ appName }}.{% endblock %}

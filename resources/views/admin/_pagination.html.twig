@@ -1,0 +1,9 @@
+{% if pages > 1 %}
+<nav class="mt-4 flex items-center justify-between text-sm" aria-label="Paginación">
+    <span class="text-slate-500">Página {{ page }} de {{ pages }}</span>
+    <div class="flex gap-2">
+        {% if page > 1 %}<a class="btn-secondary btn-sm" href="{{ base }}page={{ page - 1 }}">← Anterior</a>{% endif %}
+        {% if page < pages %}<a class="btn-secondary btn-sm" href="{{ base }}page={{ page + 1 }}">Siguiente →</a>{% endif %}
+    </div>
+</nav>
+{% endif %}

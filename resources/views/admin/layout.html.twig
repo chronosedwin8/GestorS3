@@ -1,0 +1,23 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Administración</h1>
+    <nav class="mt-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800" aria-label="Secciones de administración">
+        {% for key, item in {
+            users: { label: 'Usuarios', icon: 'users' },
+            entities: { label: 'Entidades', icon: 'building' },
+            settings: { label: 'Límites', icon: 'settings' },
+            activity: { label: 'Actividad', icon: 'activity' },
+            storage: { label: 'Almacenamiento', icon: 'database' }
+        } %}
+            <a href="{{ url('/admin/' ~ key) }}" class="-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium {{ section == key ? 'border-brand-600 text-brand-700 dark:text-brand-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200' }}" {{ section == key ? 'aria-current="page"' : '' }}>
+                {{ icon(item.icon, 'h-4 w-4') }} {{ item.label }}
+            </a>
+        {% endfor %}
+    </nav>
+    <div class="mt-6">
+        {% block admin %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

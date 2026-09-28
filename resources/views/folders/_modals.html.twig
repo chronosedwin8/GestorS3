@@ -1,0 +1,240 @@
+{# Modales del explorador (dentro del x-data="explorer"). #}
+
+{# ---------------------------------------------------------------- Nueva carpeta #}
+<template x-teleport="body">
+    <div x-show="modal.newFolder" x-cloak>
+        <div class="modal-backdrop" x-show="modal.newFolder" x-transition.opacity @click="modal.newFolder = false"></div>
+        <div class="modal-wrap pointer-events-none" x-show="modal.newFolder" x-transition>
+            <form class="modal-panel pointer-events-auto max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="nf-title" @submit.prevent="submitNewFolder()" @keydown.escape.stop="modal.newFolder = false">
+                <h2 id="nf-title" class="text-lg font-semibold text-slate-900 dark:text-white" x-text="form.isRoot ? 'Nueva carpeta' : 'Nueva subcarpeta'"></h2>
+                <p class="mt-1 text-sm text-slate-500" x-text="form.isRoot ? 'Después podrás subir archivos y compartirla con otras personas.' : 'Se creará dentro de “' + (data ? data.folder.name : '') + '”.'"></p>
+                <div class="mt-5 space-y-4">
+                    <div>
+                        <label for="nf-name" class="label">Nombre</label>
+                        <input id="nf-name" x-ref="newFolderName" x-model="form.name" maxlength="255" required class="input" placeholder="Ej.: Informes 2026">
+                    </div>
+                    <template x-if="form.isRoot">
+                        <div>
+                            <label for="nf-desc" class="label">Descripción <span class="font-normal text-slate-400">(opcional)</span></label>
+                            <textarea id="nf-desc" x-model="form.description" rows="2" maxlength="1000" class="input" placeholder="¿Para qué es esta carpeta?"></textarea>
+                        </div>
+                    </template>
+                    <p x-show="form.error" class="text-sm text-red-600" role="alert" x-text="form.error"></p>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="btn-ghost" @click="modal.newFolder = false">Cancelar</button>
+                    <button type="submit" class="btn-primary" :disabled="form.busy"><span x-text="form.busy ? 'Creando…' : 'Crear carpeta'"></span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</template>
+
+{# ---------------------------------------------------------------- Renombrar #}
+<template x-teleport="body">
+    <div x-show="modal.rename" x-cloak>
+        <div class="modal-backdrop" x-show="modal.rename" x-transition.opacity @click="modal.rename = false"></div>
+        <div class="modal-wrap pointer-events-none" x-show="modal.rename" x-transition>
+            <form class="modal-panel pointer-events-auto max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="rn-title" @submit.prevent="submitRename()" @keydown.escape.stop="modal.rename = false">
+                <h2 id="rn-title" class="text-lg font-semibold text-slate-900 dark:text-white" x-text="renameTarget && renameTarget.type === 'file' ? 'Renombrar archivo' : 'Renombrar carpeta'"></h2>
+                <div class="mt-5">
+                    <label for="rn-name" class="label">Nuevo nombre</label>
+                    <input id="rn-name" x-ref="renameInput" x-model="form.name" maxlength="255" required class="input">
+                    <p x-show="form.error" class="mt-2 text-sm text-red-600" role="alert" x-text="form.error"></p>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="btn-ghost" @click="modal.rename = false">Cancelar</button>
+                    <button type="submit" class="btn-primary" :disabled="form.busy"><span x-text="form.busy ? 'Guardando…' : 'Guardar'"></span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</template>
+
+{# ---------------------------------------------------------------- Confirmación #}
+<template x-teleport="body">
+    <div x-show="modal.confirm" x-cloak>
+        <div class="modal-backdrop" x-show="modal.confirm" x-transition.opacity @click="!confirmState.busy && (modal.confirm = false)"></div>
+        <div class="modal-wrap pointer-events-none" x-show="modal.confirm" x-transition>
+            <div class="modal-panel pointer-events-auto max-w-md p-6" role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-msg">
+                <div class="flex gap-4">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15">{{ icon('trash', 'h-5 w-5') }}</span>
+                    <div>
+                        <h2 id="cf-title" class="text-lg font-semibold text-slate-900 dark:text-white" x-text="confirmState.title"></h2>
+                        <p id="cf-msg" class="mt-1 text-sm text-slate-600 dark:text-slate-300" x-text="confirmState.message"></p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="btn-ghost" @click="modal.confirm = false" :disabled="confirmState.busy">Cancelar</button>
+                    <button type="button" class="btn-danger" @click="runConfirm()" :disabled="confirmState.busy" x-ref="confirmBtn">
+                        <svg x-show="confirmState.busy" class="h-4 w-4 animate-spin"><use :href="icons + '#spinner'"></use></svg>
+                        <span x-text="confirmState.busy ? 'Eliminando…' : confirmState.label"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{# ---------------------------------------------------------------- Descargar ZIP #}
+<template x-teleport="body">
+    <div x-show="modal.zip" x-cloak>
+        <div class="modal-backdrop" x-show="modal.zip" x-transition.opacity @click="modal.zip = false"></div>
+        <div class="modal-wrap pointer-events-none" x-show="modal.zip" x-transition>
+            <div class="modal-panel pointer-events-auto max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="zip-title">
+                <div class="flex gap-4">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15">{{ icon('archive', 'h-5 w-5') }}</span>
+                    <div class="min-w-0 flex-1">
+                        <h2 id="zip-title" class="text-lg font-semibold text-slate-900 dark:text-white" x-text="zip.all ? 'Descargar carpeta completa' : 'Descargar selección'"></h2>
+                        <template x-if="zip.loading">
+                            <p class="mt-2 flex items-center gap-2 text-sm text-slate-500"><svg class="h-4 w-4 animate-spin"><use :href="icons + '#spinner'"></use></svg> Calculando tamaño…</p>
+                        </template>
+                        <template x-if="zip.info">
+                            <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                                <p>Se descargará un archivo ZIP:</p>
+                                <p class="mt-2 truncate font-medium text-slate-900 dark:text-white" x-text="zip.info.name"></p>
+                                <p class="mt-1" x-text="plural(zip.info.count, 'archivo', 'archivos') + ' · ' + bytes(zip.info.totalBytes)"></p>
+                                <p class="mt-3 text-xs text-slate-500">La descarga empieza de inmediato y el navegador mostrará el progreso. Puedes seguir usando la aplicación mientras tanto.</p>
+                            </div>
+                        </template>
+                        <template x-if="zip.error">
+                            <p class="alert-error mt-3" role="alert" x-text="zip.error"></p>
+                        </template>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="btn-ghost" @click="modal.zip = false">Cancelar</button>
+                    <button type="button" class="btn-primary" @click="startZip()" :disabled="!zip.info">{{ icon('download', 'h-4 w-4') }} Descargar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{# ---------------------------------------------------------------- Detalles (panel lateral) #}
+<template x-teleport="body">
+    <div x-show="modal.details" x-cloak>
+        <div class="modal-backdrop" x-show="modal.details" x-transition.opacity @click="modal.details = false"></div>
+        <aside class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-panel dark:bg-slate-900" x-show="modal.details"
+               x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+               x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+               role="dialog" aria-modal="true" aria-labelledby="dt-title">
+            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 id="dt-title" class="font-semibold text-slate-900 dark:text-white">Detalles del archivo</h2>
+                <button type="button" class="btn-icon" @click="modal.details = false" aria-label="Cerrar">{{ icon('x', 'h-5 w-5') }}</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-5 py-5">
+                <template x-if="details.loading">
+                    <div class="space-y-3"><div class="skeleton h-12 w-12"></div><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-4 w-1/2"></div><div class="skeleton h-24 w-full"></div></div>
+                </template>
+                <template x-if="details.error"><p class="alert-error" x-text="details.error"></p></template>
+                <template x-if="details.data">
+                    <div>
+                        <div class="flex items-start gap-3">
+                            <svg class="h-12 w-12 shrink-0" :class="kindColor(details.data.file.kind)"><use :href="icons + '#' + kindIcon(details.data.file.kind)"></use></svg>
+                            <div class="min-w-0">
+                                <p class="break-words font-semibold text-slate-900 dark:text-white" x-text="details.data.file.name"></p>
+                                <p class="text-sm text-slate-500" x-text="bytes(details.data.file.size)"></p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex gap-2">
+                            <button type="button" class="btn-primary btn-sm" @click="download(details.data.file)">{{ icon('download', 'h-4 w-4') }} Descargar</button>
+                            <template x-if="details.data.file.previewable">
+                                <button type="button" class="btn-secondary btn-sm" @click="modal.details = false; openPreview(details.data.file)">{{ icon('eye', 'h-4 w-4') }} Ver</button>
+                            </template>
+                        </div>
+                        <dl class="mt-6 grid grid-cols-3 gap-x-3 gap-y-3 text-sm">
+                            <dt class="text-slate-500">Ubicación</dt><dd class="col-span-2 break-words" x-text="details.data.file.folderPath"></dd>
+                            <dt class="text-slate-500">Tipo</dt><dd class="col-span-2 break-words" x-text="(details.data.file.extension ? details.data.file.extension.toUpperCase() + ' · ' : '') + details.data.file.mime"></dd>
+                            <dt class="text-slate-500">Subido por</dt><dd class="col-span-2" x-text="details.data.file.uploadedBy + (details.data.file.uploaderEmail ? ' (' + details.data.file.uploaderEmail + ')' : '')"></dd>
+                            <dt class="text-slate-500">Fecha</dt><dd class="col-span-2" x-text="dateTime(details.data.file.createdAt)"></dd>
+                            <dt class="text-slate-500">Versión</dt><dd class="col-span-2" x-text="details.data.file.version"></dd>
+                        </dl>
+
+                        <h3 class="mt-8 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">{{ icon('history', 'h-4 w-4') }} Historial de versiones</h3>
+                        <ul class="mt-3 space-y-2">
+                            <template x-for="v in details.data.versions" :key="v.uuid">
+                                <li class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
+                                    <div class="min-w-0">
+                                        <p class="font-medium"><span x-text="'Versión ' + v.version"></span> <template x-if="v.current"><span class="badge-green ml-1">Actual</span></template></p>
+                                        <p class="truncate text-xs text-slate-500" x-text="v.uploadedBy + ' · ' + dateTime(v.createdAt) + ' · ' + bytes(v.size)"></p>
+                                    </div>
+                                    <a :href="versionHref(v.uuid)" class="btn-icon shrink-0" :aria-label="'Descargar versión ' + v.version" title="Descargar esta versión">{{ icon('download', 'h-4 w-4') }}</a>
+                                </li>
+                            </template>
+                        </ul>
+
+                        <template x-if="details.data.downloads !== null">
+                            <div>
+                                <h3 class="mt-8 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">{{ icon('download', 'h-4 w-4') }} Quién lo descargó o vio</h3>
+                                <template x-if="!details.data.downloads.length"><p class="mt-2 text-sm text-slate-500">Nadie lo ha descargado todavía.</p></template>
+                                <ul class="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+                                    <template x-for="(d, i) in details.data.downloads" :key="i">
+                                        <li class="flex items-center justify-between gap-2 py-2">
+                                            <span class="min-w-0 truncate"><span x-text="d.user"></span> <span class="text-slate-400" x-text="d.action === 'preview' ? '(vista)' : ''"></span></span>
+                                            <span class="shrink-0 text-xs text-slate-500" x-text="relative(d.at)" :title="dateTime(d.at)"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </aside>
+    </div>
+</template>
+
+{# ---------------------------------------------------------------- Vista previa #}
+<template x-teleport="body">
+    <div x-show="modal.preview" x-cloak class="fixed inset-0 z-50 flex flex-col bg-slate-950/95" role="dialog" aria-modal="true" aria-label="Vista previa" x-transition.opacity>
+        <div class="flex items-center gap-3 px-4 py-3 text-white">
+            <p class="min-w-0 flex-1 truncate font-medium" x-text="preview.file ? preview.file.name : ''"></p>
+            <span class="hidden text-sm text-slate-400 sm:inline" x-text="preview.file ? bytes(preview.file.size) : ''"></span>
+            <button type="button" class="btn bg-white/10 text-white hover:bg-white/20" @click="download(preview.file)">{{ icon('download', 'h-4 w-4') }} <span class="hidden sm:inline">Descargar</span></button>
+            <button type="button" class="btn-icon text-white hover:bg-white/10 hover:text-white" @click="closePreview()" aria-label="Cerrar vista previa">{{ icon('x', 'h-5 w-5') }}</button>
+        </div>
+        <div class="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-4 sm:px-14">
+            <template x-if="previewables.length > 1">
+                <button type="button" class="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:block" @click="previewStep(-1)" aria-label="Anterior">{{ icon('chevron-left', 'h-6 w-6') }}</button>
+            </template>
+            <template x-if="previewables.length > 1">
+                <button type="button" class="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:block" @click="previewStep(1)" aria-label="Siguiente">{{ icon('chevron-right', 'h-6 w-6') }}</button>
+            </template>
+
+            <template x-if="preview.loading">
+                <div class="flex items-center gap-2 text-slate-300"><svg class="h-5 w-5 animate-spin"><use :href="icons + '#spinner'"></use></svg> Cargando vista previa…</div>
+            </template>
+            <template x-if="preview.error">
+                <div class="max-w-md rounded-xl bg-white p-6 text-center dark:bg-slate-900">
+                    <p class="text-sm text-slate-700 dark:text-slate-200" x-text="preview.error"></p>
+                    <button type="button" class="btn-primary mt-4" @click="download(preview.file)">Descargar archivo</button>
+                </div>
+            </template>
+            <template x-if="preview.info && preview.info.kind === 'image'">
+                <img :src="preview.info.url" :alt="preview.file.name" class="max-h-full max-w-full rounded object-contain shadow-2xl">
+            </template>
+            <template x-if="preview.info && preview.info.kind === 'pdf'">
+                <iframe :src="preview.info.url" class="h-full w-full max-w-5xl rounded bg-white" :title="preview.file.name"></iframe>
+            </template>
+            <template x-if="preview.info && preview.info.kind === 'video'">
+                <video :src="preview.info.url" controls autoplay class="max-h-full max-w-full rounded shadow-2xl"></video>
+            </template>
+            <template x-if="preview.info && preview.info.kind === 'audio'">
+                <div class="w-full max-w-lg rounded-2xl bg-white p-6 text-center dark:bg-slate-900">
+                    <svg class="mx-auto h-14 w-14 text-violet-500"><use :href="icons + '#file-audio'"></use></svg>
+                    <p class="mt-3 truncate font-medium" x-text="preview.file.name"></p>
+                    <audio :src="preview.info.url" controls autoplay class="mt-4 w-full"></audio>
+                </div>
+            </template>
+            <template x-if="preview.info && preview.info.kind === 'text'">
+                <div class="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white dark:bg-slate-900">
+                    <pre class="flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200" x-text="preview.text"></pre>
+                    <template x-if="preview.truncated">
+                        <p class="border-t border-slate-200 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">Se muestran los primeros 512 KB. Descarga el archivo para verlo completo.</p>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</template>

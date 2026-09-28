@@ -1,0 +1,71 @@
+{% extends 'layouts/app.html.twig' %}
+{% set pageTitle = 'Mi perfil' %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+    <a href="{{ url('/') }}" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">← Mis carpetas</a>
+    <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Mi perfil</h1>
+
+    <section class="card mt-6 p-6">
+        <h2 class="font-semibold text-slate-900 dark:text-white">Datos personales</h2>
+        <form method="post" action="{{ url('/profile') }}" class="mt-4 space-y-4">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            <div>
+                <label for="name" class="label">Nombre</label>
+                <input id="name" name="name" required maxlength="150" value="{{ profile.name }}" class="input">
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <span class="label">Correo</span>
+                    <p class="rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800">{{ profile.email }}</p>
+                </div>
+                <div>
+                    <span class="label">Entidad</span>
+                    <p class="rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800">{{ profile.entity_name ?: 'Sin entidad' }}</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500">Rol: {{ profile.role == 'admin' ? 'Administrador' : 'Usuario' }} · Último acceso: {{ profile.last_login_at|local_date }}</p>
+            <div class="flex justify-end"><button type="submit" class="btn-primary">Guardar</button></div>
+        </form>
+    </section>
+
+    <section class="card mt-6 p-6">
+        <h2 class="font-semibold text-slate-900 dark:text-white">Cambiar contraseña</h2>
+        {% if profile.limited_session and profile.password_hash %}
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Entraste con un enlace de acceso. Para cambiar la contraseña, usa <a class="font-medium text-brand-600 hover:underline" href="{{ url('/forgot-password') }}">“Olvidé mi contraseña”</a>.</p>
+        {% else %}
+        <form method="post" action="{{ url('/profile/password') }}" class="mt-4 space-y-4">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            {% if profile.password_hash %}
+            <div>
+                <label for="current_password" class="label">Contraseña actual</label>
+                <input id="current_password" name="current_password" type="password" required autocomplete="current-password" class="input">
+            </div>
+            {% endif %}
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="password" class="label">Nueva contraseña</label>
+                    <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" class="input">
+                </div>
+                <div>
+                    <label for="password_confirmation" class="label">Repítela</label>
+                    <input id="password_confirmation" name="password_confirmation" type="password" required minlength="8" autocomplete="new-password" class="input">
+                </div>
+            </div>
+            <div class="flex justify-end"><button type="submit" class="btn-primary">Cambiar contraseña</button></div>
+        </form>
+        {% endif %}
+    </section>
+
+    <section class="card mt-6 flex items-center justify-between gap-4 p-6">
+        <div>
+            <h2 class="font-semibold text-slate-900 dark:text-white">Cerrar sesión</h2>
+            <p class="text-sm text-slate-500">Sal de tu cuenta en este dispositivo.</p>
+        </div>
+        <form method="post" action="{{ url('/logout') }}">
+            <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+            <button type="submit" class="btn-secondary">{{ icon('logout', 'h-4 w-4') }} Cerrar sesión</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

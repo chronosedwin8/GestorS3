@@ -1,0 +1,15 @@
+{% extends 'emails/layout.html.twig' %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Te invitaron a compartir archivos</h1>
+<p style="margin:0 0 12px;">
+    <strong>{{ inviterName }}</strong>{% if inviterEntity %} ({{ inviterEntity }}){% endif %}
+    {% if folderName %}
+        te invitó a la carpeta <strong>“{{ folderName }}”</strong>{% if permissionLabel %} como <strong>{{ permissionLabel|lower }}</strong>{% endif %}.
+    {% else %}
+        te invitó a usar {{ appName }}.
+    {% endif %}
+</p>
+<p style="margin:0;">Crea tu cuenta en menos de un minuto: solo necesitas tu nombre y una contraseña.</p>
+{% include 'emails/_button.html.twig' with { url: url, label: 'Aceptar invitación' } %}
+<p style="margin:16px 0 0;font-size:13px;color:#64748b;">La invitación vence en {{ days }} días.</p>
+{% endblock %}

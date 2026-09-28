@@ -1,0 +1,28 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block body_attrs %}data-inline-flashes{% endblock %}
+
+{% block body %}
+<div class="flex min-h-full flex-col justify-center px-4 py-10 sm:px-6">
+    <div class="mx-auto w-full max-w-md">
+        <a href="{{ url('/') }}" class="mb-8 flex items-center justify-center gap-2.5 text-slate-900 dark:text-white">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+                {{ icon('folder-up', 'h-6 w-6') }}
+            </span>
+            <span class="text-lg font-semibold tracking-tight">{{ app.name }}</span>
+        </a>
+
+        <main id="main" class="card px-6 py-8 sm:px-8">
+            {% for flash in app.flashes %}
+                <div class="{{ flash.type == 'error' ? 'alert-error' : (flash.type == 'success' ? 'alert-success' : 'alert-info') }} mb-5" role="alert">
+                    {{ icon(flash.type == 'error' ? 'alert-circle' : 'check-circle', 'h-5 w-5 shrink-0') }}
+                    <p>{{ flash.message }}</p>
+                </div>
+            {% endfor %}
+            {% block content %}{% endblock %}
+        </main>
+
+        {% block below %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

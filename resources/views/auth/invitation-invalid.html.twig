@@ -1,0 +1,12 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Invitación no válida' %}
+
+{% block content %}
+<div class="text-center">
+    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/15">{{ icon('clock', 'h-7 w-7') }}</span>
+    <h1 class="mt-4 text-xl font-semibold text-slate-900 dark:text-white">Invitación no disponible</h1>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ message }}</p>
+    <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">Si ya creaste tu cuenta, simplemente inicia sesión.</p>
+    <a href="{{ url('/login') }}" class="btn-primary mt-6">Iniciar sesión</a>
+</div>
+{% endblock %}

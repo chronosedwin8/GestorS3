@@ -1,0 +1,29 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Nueva contraseña' %}
+
+{% block content %}
+{% if valid %}
+    <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Crea una nueva contraseña</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Para la cuenta <strong>{{ email }}</strong>.</p>
+    <form method="post" action="{{ url('/reset-password/' ~ token) }}" class="mt-6 space-y-4" x-data="{ busy: false }" @submit="busy = true">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <div>
+            <label for="password" class="label">Nueva contraseña</label>
+            <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" class="input" autofocus>
+            <p class="hint">Mínimo 8 caracteres. Una frase fácil de recordar es una buena opción.</p>
+        </div>
+        <div>
+            <label for="password_confirmation" class="label">Repite la contraseña</label>
+            <input id="password_confirmation" name="password_confirmation" type="password" required minlength="8" autocomplete="new-password" class="input">
+        </div>
+        <button type="submit" class="btn-primary btn-lg w-full" :disabled="busy">Guardar y entrar</button>
+    </form>
+{% else %}
+    <div class="text-center">
+        <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/15">{{ icon('clock', 'h-7 w-7') }}</span>
+        <h1 class="mt-4 text-xl font-semibold text-slate-900 dark:text-white">El enlace expiró</h1>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Este enlace ya se usó o pasó más de una hora. Solicita uno nuevo.</p>
+        <a href="{{ url('/forgot-password') }}" class="btn-primary mt-6">Solicitar un nuevo enlace</a>
+    </div>
+{% endif %}
+{% endblock %}

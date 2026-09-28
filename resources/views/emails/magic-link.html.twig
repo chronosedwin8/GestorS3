@@ -1,0 +1,8 @@
+{% extends 'emails/layout.html.twig' %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Tu enlace de acceso</h1>
+<p style="margin:0 0 12px;">Hola {{ name }},</p>
+<p style="margin:0;">Pulsa el botón para entrar sin contraseña. El enlace sirve una sola vez y vence en {{ minutes }} minutos.</p>
+{% include 'emails/_button.html.twig' with { url: url, label: 'Entrar' } %}
+<p style="margin:16px 0 0;font-size:13px;color:#64748b;">Si no pediste este enlace, ignora este correo.</p>
+{% endblock %}

@@ -1,0 +1,191 @@
+{# Modal "Compartir carpeta" (componente Alpine shareDialog). #}
+<div x-data="shareDialog" x-cloak @keydown.escape.window="open && close()">
+    <div x-show="open" class="modal-backdrop" x-transition.opacity @click="close()"></div>
+    <div x-show="open" class="modal-wrap pointer-events-none" x-transition>
+        <div class="modal-panel pointer-events-auto max-w-2xl" role="dialog" aria-modal="true" aria-labelledby="share-title">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                <div class="min-w-0">
+                    <h2 id="share-title" class="text-lg font-semibold text-slate-900 dark:text-white">Compartir “<span x-text="data ? data.root.name : (folder ? folder.name : '')"></span>”</h2>
+                    <p class="mt-0.5 text-sm text-slate-500">Las personas con acceso pueden ver todas las subcarpetas.</p>
+                </div>
+                <button type="button" class="btn-icon" @click="close()" aria-label="Cerrar">{{ icon('x', 'h-5 w-5') }}</button>
+            </div>
+
+            <div class="flex gap-1 border-b border-slate-200 px-6 dark:border-slate-800" role="tablist">
+                <button type="button" role="tab" class="-mb-px border-b-2 px-3 py-2.5 text-sm font-medium" :class="tab === 'people' ? 'border-brand-600 text-brand-700 dark:text-brand-300' : 'border-transparent text-slate-500 hover:text-slate-700'" @click="tab = 'people'" :aria-selected="tab === 'people'">{{ icon('users', 'inline h-4 w-4 -mt-0.5') }} Personas</button>
+                <template x-if="folder && folder.caps && folder.caps.shareLinks">
+                    <button type="button" role="tab" class="-mb-px border-b-2 px-3 py-2.5 text-sm font-medium" :class="tab === 'link' ? 'border-brand-600 text-brand-700 dark:text-brand-300' : 'border-transparent text-slate-500 hover:text-slate-700'" @click="openLinks()" :aria-selected="tab === 'link'">{{ icon('link', 'inline h-4 w-4 -mt-0.5') }} Enlace público</button>
+                </template>
+            </div>
+
+            <div class="px-6 py-5">
+                <template x-if="loading && !data"><div class="space-y-3"><div class="skeleton h-10 w-full"></div><div class="skeleton h-10 w-full"></div></div></template>
+                <template x-if="error"><p class="alert-error" x-text="error"></p></template>
+
+                {# -------------------------------------------------------- Personas #}
+                <div x-show="tab === 'people' && data">
+                    <template x-if="canInvite">
+                        <form @submit.prevent="sendInvites()" class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                            <label for="invite-emails" class="label">Invitar por correo</label>
+                            <textarea id="invite-emails" x-ref="inviteEmails" x-model="invite.emails" rows="2" class="input" placeholder="correo@entidad.com, otra.persona@empresa.co"></textarea>
+                            <p class="hint">Separa varios correos con comas. Pueden ser de cualquier entidad; si no tienen cuenta, recibirán una invitación para crearla.</p>
+                            <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <label class="flex items-center gap-2 text-sm">
+                                    <span class="text-slate-600 dark:text-slate-300">Permiso:</span>
+                                    <select x-model="invite.permission" class="input w-auto py-1.5">
+                                        <template x-for="p in data.grantable" :key="p">
+                                            <option :value="p" x-text="p === 'editor' ? 'Editor — puede subir y organizar' : 'Lector — solo ver y descargar'"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <button type="submit" class="btn-primary" :disabled="invite.busy || !emailCount">
+                                    {{ icon('user-plus', 'h-4 w-4') }}
+                                    <span x-text="invite.busy ? 'Enviando…' : (emailCount > 1 ? 'Invitar a ' + emailCount : 'Invitar')"></span>
+                                </button>
+                            </div>
+                            <template x-if="invite.results.length">
+                                <ul class="mt-3 space-y-1.5 text-sm">
+                                    <template x-for="r in invite.results" :key="r.email">
+                                        <li class="flex flex-col gap-1 rounded-lg bg-white px-3 py-2 dark:bg-slate-900">
+                                            <div class="flex items-center gap-2">
+                                                <svg class="h-4 w-4 shrink-0" :class="r.status === 'error' ? 'text-red-500' : (r.status === 'already_member' ? 'text-slate-400' : 'text-emerald-500')"><use :href="icons + (r.status === 'error' ? '#alert-circle' : '#check-circle')"></use></svg>
+                                                <span class="truncate font-medium" x-text="r.email"></span>
+                                                <span class="truncate text-slate-500" x-text="r.message"></span>
+                                            </div>
+                                            <template x-if="r.link">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="text" readonly class="input py-1 text-xs" :value="r.link" @focus="$event.target.select()">
+                                                    <button type="button" class="btn-secondary btn-sm" @click="copy(r.link, 'Enlace de invitación copiado.')">{{ icon('copy', 'h-3.5 w-3.5') }} Copiar</button>
+                                                </div>
+                                            </template>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                        </form>
+                    </template>
+
+                    <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-white">Personas con acceso <span class="font-normal text-slate-500" x-text="data ? '(' + data.members.length + ')' : ''"></span></h3>
+                    <ul class="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+                        <template x-for="m in (data ? data.members : [])" :key="m.userUuid">
+                            <li class="flex items-center gap-3 py-2.5">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300" x-text="m.name.charAt(0).toUpperCase()"></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium"><span x-text="m.name"></span><template x-if="m.userUuid === me"><span class="text-slate-400"> (tú)</span></template></p>
+                                    <p class="truncate text-xs text-slate-500"><span x-text="m.email"></span><template x-if="m.entity"><span x-text="' · ' + m.entity"></span></template></p>
+                                </div>
+                                <template x-if="data.canManage && m.permission !== 'owner'">
+                                    <select class="input w-auto py-1 text-xs" :value="m.permission" @change="changePermission(m, $event.target.value)" :aria-label="'Permiso de ' + m.name">
+                                        <option value="editor">Editor</option>
+                                        <option value="viewer">Lector</option>
+                                    </select>
+                                </template>
+                                <template x-if="!(data.canManage && m.permission !== 'owner')">
+                                    <span class="badge-gray" x-text="labels[m.permission]"></span>
+                                </template>
+                                <template x-if="m.permission !== 'owner' && (data.canManage || m.userUuid === me)">
+                                    <div class="relative">
+                                        <template x-if="removing !== m.userUuid">
+                                            <button type="button" class="btn-icon" @click="removing = m.userUuid" :aria-label="m.userUuid === me ? 'Salir de la carpeta' : 'Quitar acceso a ' + m.name" :title="m.userUuid === me ? 'Salir de la carpeta' : 'Quitar acceso'">{{ icon('x', 'h-4 w-4') }}</button>
+                                        </template>
+                                        <template x-if="removing === m.userUuid">
+                                            <span class="flex items-center gap-1">
+                                                <button type="button" class="btn-sm btn bg-red-600 text-white hover:bg-red-700" @click="removeMember(m)" x-text="m.userUuid === me ? 'Salir' : 'Quitar'"></button>
+                                                <button type="button" class="btn-sm btn-ghost" @click="removing = null">No</button>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </li>
+                        </template>
+                    </ul>
+
+                    <template x-if="data && data.invitations.length">
+                        <div>
+                            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-white">Invitaciones pendientes</h3>
+                            <ul class="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+                                <template x-for="inv in data.invitations" :key="inv.uuid">
+                                    <li class="flex items-center gap-3 py-2.5 text-sm">
+                                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 text-slate-400 dark:border-slate-600">{{ icon('mail', 'h-4 w-4') }}</span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate font-medium" x-text="inv.email"></p>
+                                            <p class="truncate text-xs text-slate-500" x-text="'Invitado por ' + inv.invitedBy + ' · ' + relative(inv.createdAt) + ' · ' + labels[inv.permission]"></p>
+                                        </div>
+                                        <button type="button" class="btn-ghost btn-sm" @click="cancelInvitation(inv)">Cancelar</button>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+
+                {# -------------------------------------------------------- Enlace público #}
+                <div x-show="tab === 'link'">
+                    <p class="text-sm text-slate-600 dark:text-slate-300">
+                        Cualquier persona con el enlace podrá <strong>ver y descargar</strong> el contenido de
+                        “<span x-text="folder ? folder.name : ''"></span>” sin necesidad de cuenta. Puedes protegerlo con contraseña, ponerle fecha de vencimiento y desactivarlo cuando quieras.
+                    </p>
+
+                    <div class="mt-4">
+                        <template x-if="!newLink.show">
+                            <button type="button" class="btn-primary" @click="newLink.show = true">{{ icon('link', 'h-4 w-4') }} Crear enlace público</button>
+                        </template>
+                        <template x-if="newLink.show">
+                            <form class="grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-3 dark:bg-slate-800/50" @submit.prevent="createLink()">
+                                <div>
+                                    <label class="label" for="nl-exp">Vence</label>
+                                    <select id="nl-exp" x-model="newLink.expiresInDays" class="input">
+                                        <option value="0">Nunca</option>
+                                        <option value="1">En 1 día</option>
+                                        <option value="7">En 7 días</option>
+                                        <option value="30">En 30 días</option>
+                                        <option value="90">En 90 días</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="label" for="nl-pass">Contraseña <span class="font-normal text-slate-400">(opcional)</span></label>
+                                    <input id="nl-pass" type="text" x-model="newLink.password" class="input" autocomplete="off" placeholder="Sin contraseña">
+                                </div>
+                                <div>
+                                    <label class="label" for="nl-max">Máx. descargas <span class="font-normal text-slate-400">(opcional)</span></label>
+                                    <input id="nl-max" type="number" min="1" x-model="newLink.maxDownloads" class="input" placeholder="Sin límite">
+                                </div>
+                                <div class="flex justify-end gap-2 sm:col-span-3">
+                                    <button type="button" class="btn-ghost" @click="newLink.show = false">Cancelar</button>
+                                    <button type="submit" class="btn-primary" :disabled="newLink.busy" x-text="newLink.busy ? 'Creando…' : 'Crear y copiar enlace'"></button>
+                                </div>
+                            </form>
+                        </template>
+                    </div>
+
+                    <template x-if="linksLoading"><div class="mt-4 skeleton h-16 w-full"></div></template>
+                    <ul class="mt-4 space-y-2">
+                        <template x-for="l in links" :key="l.uuid">
+                            <li class="rounded-xl border border-slate-200 p-3 dark:border-slate-700" :class="!l.active && 'opacity-60'">
+                                <div class="flex items-center gap-2">
+                                    <input type="text" readonly class="input py-1.5 font-mono text-xs" :value="l.url" @focus="$event.target.select()" aria-label="Enlace público">
+                                    <template x-if="l.active">
+                                        <button type="button" class="btn-secondary btn-sm" @click="copy(l.url, 'Enlace copiado.')">{{ icon('copy', 'h-3.5 w-3.5') }} Copiar</button>
+                                    </template>
+                                </div>
+                                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                    <span :class="l.active ? 'badge-green' : 'badge-gray'" x-text="linkStatus(l)"></span>
+                                    <template x-if="l.hasPassword"><span>{{ icon('lock', 'inline h-3.5 w-3.5 -mt-0.5') }} Con contraseña</span></template>
+                                    <span x-text="l.expiresAt ? 'Vence ' + dateTime(l.expiresAt) : 'No vence'"></span>
+                                    <span x-text="l.downloads + (l.maxDownloads ? ' de ' + l.maxDownloads : '') + ' descargas'"></span>
+                                    <span x-text="'Creado por ' + l.createdBy + ' ' + relative(l.createdAt)"></span>
+                                    <template x-if="!l.revoked">
+                                        <button type="button" class="ml-auto font-medium text-red-600 hover:underline dark:text-red-400" @click="revokeLink(l)">Desactivar</button>
+                                    </template>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                    <template x-if="!linksLoading && !links.length">
+                        <p class="mt-4 text-sm text-slate-500">Todavía no hay enlaces públicos para esta carpeta.</p>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

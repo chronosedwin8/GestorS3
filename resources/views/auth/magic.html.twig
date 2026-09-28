@@ -1,0 +1,21 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Entrar' %}
+
+{% block content %}
+<div class="text-center">
+{% if valid %}
+    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">{{ icon('key', 'h-7 w-7') }}</span>
+    <h1 class="mt-4 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Todo listo para entrar</h1>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Pulsa el botón para acceder a tus carpetas.</p>
+    <form method="post" action="{{ url('/magic/' ~ token) }}" class="mt-6">
+        <input type="hidden" name="_csrf" value="{{ app.csrf }}">
+        <button type="submit" class="btn-primary btn-lg w-full" autofocus>Entrar ahora</button>
+    </form>
+{% else %}
+    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/15">{{ icon('clock', 'h-7 w-7') }}</span>
+    <h1 class="mt-4 text-xl font-semibold text-slate-900 dark:text-white">Este enlace ya no es válido</h1>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Los enlaces de acceso sirven una sola vez y duran 20 minutos.</p>
+    <a href="{{ url('/login?tab=magic') }}" class="btn-primary mt-6">Pedir un nuevo enlace</a>
+{% endif %}
+</div>
+{% endblock %}

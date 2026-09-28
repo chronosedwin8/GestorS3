@@ -1,0 +1,159 @@
+{# Panel global de subidas (estilo Google Drive). Usa el store Alpine "uploads". #}
+<div x-data x-cloak>
+    {# Estado para lectores de pantalla #}
+    <p class="sr-only" aria-live="polite" x-text="$store.uploads.statusText"></p>
+
+    <section x-show="$store.uploads.open" x-transition
+             class="fixed inset-x-2 bottom-2 z-40 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[26rem] dark:border-slate-700 dark:bg-slate-900"
+             aria-label="Panel de subidas">
+        {# Cabecera #}
+        <div class="flex items-center gap-2 bg-slate-900 px-4 py-3 text-white dark:bg-slate-800">
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold" x-text="$store.uploads.title"></p>
+                <p class="truncate text-xs text-slate-300" x-show="$store.uploads.subtitle" x-text="$store.uploads.subtitle"></p>
+            </div>
+            <template x-if="$store.uploads.hasActive">
+                <button type="button" class="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" @click="$store.uploads.pauseAll()" title="Pausar todo" aria-label="Pausar todo">
+                    <svg class="h-4 w-4"><use :href="$store.uploads.icons + '#pause'"></use></svg>
+                </button>
+            </template>
+            <template x-if="!$store.uploads.hasActive && $store.uploads.counts.paused">
+                <button type="button" class="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" @click="$store.uploads.resumeAll()" title="Reanudar todo" aria-label="Reanudar todo">
+                    <svg class="h-4 w-4"><use :href="$store.uploads.icons + '#play'"></use></svg>
+                </button>
+            </template>
+            <button type="button" class="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" @click="$store.uploads.minimized = !$store.uploads.minimized" :aria-label="$store.uploads.minimized ? 'Expandir panel' : 'Minimizar panel'" :aria-expanded="!$store.uploads.minimized">
+                <svg class="h-4 w-4"><use :href="$store.uploads.icons + ($store.uploads.minimized ? '#chevron-up' : '#chevron-down')"></use></svg>
+            </button>
+            <button type="button" class="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" @click="$store.uploads.hasActive ? ($store.uploads.minimized = true) : $store.uploads.close()" :title="$store.uploads.hasActive ? 'Minimizar' : 'Cerrar'" aria-label="Cerrar panel">
+                <svg class="h-4 w-4"><use :href="$store.uploads.icons + '#x'"></use></svg>
+            </button>
+        </div>
+
+        {# Progreso global #}
+        <div class="h-1 bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Progreso total" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="$store.uploads.percent">
+            <div class="h-full bg-brand-500 transition-[width] duration-500" :class="$store.uploads.counts.error && !$store.uploads.hasActive && 'bg-amber-500'" :style="'width:' + $store.uploads.percent + '%'"></div>
+        </div>
+
+        <div x-show="!$store.uploads.minimized">
+            {# Acciones masivas #}
+            <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2 text-xs dark:border-slate-800">
+                <span class="text-slate-500" x-text="$store.uploads.counts.done + ' de ' + $store.uploads.relevant.length + ' completados'"></span>
+                <div class="flex gap-3">
+                    <template x-if="$store.uploads.counts.error">
+                        <button type="button" class="font-medium text-brand-600 hover:underline dark:text-brand-400" @click="$store.uploads.retryAll()">Reintentar fallidos</button>
+                    </template>
+                    <template x-if="$store.uploads.hasActive">
+                        <button type="button" class="font-medium text-red-600 hover:underline dark:text-red-400" @click="$store.uploads.cancelAll()">Cancelar todo</button>
+                    </template>
+                    <template x-if="!$store.uploads.hasActive && $store.uploads.counts.done">
+                        <button type="button" class="font-medium text-slate-600 hover:underline dark:text-slate-300" @click="$store.uploads.clearFinished()">Limpiar completados</button>
+                    </template>
+                </div>
+            </div>
+
+            {# Lista #}
+            <ul class="max-h-[50vh] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                <template x-for="item in $store.uploads.items" :key="item.id">
+                    <li class="px-4 py-3" :class="item.status === 'canceled' && 'opacity-60'">
+                        <div class="flex items-start gap-3">
+                            <svg class="mt-0.5 h-6 w-6 shrink-0" :class="$store.uploads.kindColor(item.kind)"><use :href="$store.uploads.icons + '#' + $store.uploads.kindIcon(item.kind)"></use></svg>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-100" :title="item.relativePath || item.name" x-text="item.name"></p>
+                                    <span class="shrink-0 text-xs text-slate-400" x-text="$store.uploads.bytes(item.size)"></span>
+                                </div>
+                                <template x-if="item.relativePath && item.relativePath.includes('/')">
+                                    <p class="truncate text-xs text-slate-400" x-text="item.relativePath.substring(0, item.relativePath.lastIndexOf('/'))"></p>
+                                </template>
+                                <template x-if="['uploading', 'preparing', 'retrying', 'finishing', 'paused'].includes(item.status)">
+                                    <div class="progress mt-2" role="progressbar" :aria-valuenow="$store.uploads.itemPercent(item)" aria-valuemin="0" aria-valuemax="100" :aria-label="'Progreso de ' + item.name">
+                                        <div class="progress-bar" :class="{ 'bg-slate-400': item.status === 'paused', 'bg-amber-500': item.status === 'retrying', 'animate-pulse': item.status === 'preparing' || item.status === 'finishing' }" :style="'width:' + Math.max(item.status === 'preparing' ? 3 : 0, $store.uploads.itemPercent(item)) + '%'"></div>
+                                    </div>
+                                </template>
+                                <p class="mt-1 text-xs"
+                                   :class="{
+                                       'text-red-600 dark:text-red-400': item.status === 'error',
+                                       'text-emerald-600 dark:text-emerald-400': item.status === 'done',
+                                       'text-amber-600 dark:text-amber-400': item.status === 'conflict' || item.status === 'retrying' || item.status === 'interrupted',
+                                       'text-slate-500 dark:text-slate-400': !['error', 'done', 'conflict', 'retrying', 'interrupted'].includes(item.status)
+                                   }" x-text="$store.uploads.statusLabel(item)"></p>
+                            </div>
+                            <div class="flex shrink-0 items-center">
+                                <template x-if="item.status === 'done'">
+                                    <svg class="h-5 w-5 text-emerald-500" aria-label="Completado"><use :href="$store.uploads.icons + '#check-circle'"></use></svg>
+                                </template>
+                                <template x-if="['uploading', 'preparing', 'retrying', 'queued'].includes(item.status)">
+                                    <button type="button" class="btn-icon h-7 w-7" @click="$store.uploads.pause(item)" :aria-label="'Pausar ' + item.name" title="Pausar"><svg class="h-4 w-4"><use :href="$store.uploads.icons + '#pause'"></use></svg></button>
+                                </template>
+                                <template x-if="item.status === 'paused'">
+                                    <button type="button" class="btn-icon h-7 w-7" @click="$store.uploads.resume(item)" :aria-label="'Reanudar ' + item.name" title="Reanudar"><svg class="h-4 w-4"><use :href="$store.uploads.icons + '#play'"></use></svg></button>
+                                </template>
+                                <template x-if="item.status === 'error' && item.errorRetryable">
+                                    <button type="button" class="btn-icon h-7 w-7" @click="$store.uploads.retry(item)" :aria-label="'Reintentar ' + item.name" title="Reintentar"><svg class="h-4 w-4"><use :href="$store.uploads.icons + '#retry'"></use></svg></button>
+                                </template>
+                                <template x-if="item.status === 'interrupted'">
+                                    <button type="button" class="btn-secondary btn-sm" @click="$store.uploads.pickForResume(item)">Continuar</button>
+                                </template>
+                                <template x-if="item.status === 'conflict'">
+                                    <button type="button" class="btn-secondary btn-sm" @click="$store.uploads.showNextConflict()">Decidir</button>
+                                </template>
+                                <template x-if="!['done', 'canceled', 'skipped'].includes(item.status)">
+                                    <button type="button" class="btn-icon h-7 w-7" @click="$store.uploads.cancel(item)" :aria-label="'Cancelar ' + item.name" title="Cancelar"><svg class="h-4 w-4"><use :href="$store.uploads.icons + '#x'"></use></svg></button>
+                                </template>
+                                <template x-if="['done', 'canceled', 'skipped'].includes(item.status)">
+                                    <button type="button" class="btn-icon h-7 w-7 opacity-60" @click="$store.uploads.remove(item)" :aria-label="'Quitar ' + item.name + ' de la lista'" title="Quitar de la lista"><svg class="h-3.5 w-3.5"><use :href="$store.uploads.icons + '#minus'"></use></svg></button>
+                                </template>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </section>
+
+    {# ---------------------------------------------------------------- Conflicto de nombre #}
+    <template x-if="$store.uploads.conflict">
+        <div>
+            <div class="modal-backdrop"></div>
+            <div class="modal-wrap">
+                <div class="modal-panel max-w-md p-6" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+                    <div class="flex gap-4">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/15"><svg class="h-5 w-5"><use :href="$store.uploads.icons + '#alert'"></use></svg></span>
+                        <div class="min-w-0">
+                            <h2 id="conflict-title" class="text-lg font-semibold text-slate-900 dark:text-white">Este archivo ya existe</h2>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                Ya hay un archivo llamado <strong class="break-words" x-text="$store.uploads.conflict.name"></strong>
+                                <template x-if="$store.uploads.conflict.folder"><span>en “<span x-text="$store.uploads.conflict.folder"></span>”</span></template>.
+                                ¿Qué quieres hacer?
+                            </p>
+                            <template x-if="$store.uploads.conflict.existing">
+                                <p class="mt-2 text-xs text-slate-500" x-text="'Archivo existente: ' + $store.uploads.bytes($store.uploads.conflict.existing.size)"></p>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="mt-5 space-y-2">
+                        <button type="button" class="menu-item rounded-lg border border-slate-200 dark:border-slate-700" @click="$store.uploads.resolveConflict('replace')">
+                            <svg class="h-5 w-5 text-brand-600"><use :href="$store.uploads.icons + '#retry'"></use></svg>
+                            <span><span class="block font-medium">Reemplazar</span><span class="block text-xs text-slate-500">Se guarda como nueva versión; la anterior queda en el historial.</span></span>
+                        </button>
+                        <button type="button" class="menu-item rounded-lg border border-slate-200 dark:border-slate-700" @click="$store.uploads.resolveConflict('keep_both')">
+                            <svg class="h-5 w-5 text-brand-600"><use :href="$store.uploads.icons + '#copy'"></use></svg>
+                            <span><span class="block font-medium">Conservar ambos</span><span class="block text-xs text-slate-500">El nuevo se guarda como “nombre (2)”.</span></span>
+                        </button>
+                        <button type="button" class="menu-item rounded-lg border border-slate-200 dark:border-slate-700" @click="$store.uploads.resolveConflict('skip')">
+                            <svg class="h-5 w-5 text-slate-500"><use :href="$store.uploads.icons + '#x'"></use></svg>
+                            <span><span class="block font-medium">Omitir</span><span class="block text-xs text-slate-500">No subir este archivo.</span></span>
+                        </button>
+                    </div>
+                    <template x-if="$store.uploads.conflict.pending > 1">
+                        <label class="mt-4 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                            <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600" x-model="$store.uploads.conflictApplyAll">
+                            <span>Aplicar la misma decisión a los demás archivos repetidos</span>
+                        </label>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>

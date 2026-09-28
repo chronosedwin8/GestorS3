@@ -1,0 +1,20 @@
+{% extends 'layouts/auth.html.twig' %}
+{% set pageTitle = 'Revisa tu correo' %}
+
+{% block content %}
+<div class="text-center">
+    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+        {{ icon('mail', 'h-7 w-7') }}
+    </span>
+    <h1 class="mt-4 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Revisa tu correo</h1>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        Si <strong>{{ email }}</strong> tiene una cuenta, en unos momentos recibirás
+        {{ purpose == 'magic' ? 'un enlace para entrar (válido por 20 minutos).' : 'un enlace para crear una nueva contraseña (válido por 60 minutos).' }}
+    </p>
+    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">¿No llega? Revisa la carpeta de spam o correo no deseado, o inténtalo de nuevo en unos minutos.</p>
+</div>
+{% endblock %}
+
+{% block below %}
+<p class="mt-6 text-center text-sm"><a href="{{ url('/login') }}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">← Volver a iniciar sesión</a></p>
+{% endblock %}

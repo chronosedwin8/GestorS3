@@ -7,6 +7,10 @@ use App\Support\Config;
 use App\Support\Token;
 use App\Support\TwigExtension;
 use Aws\S3\S3Client;
+
+use function DI\autowire;
+use function DI\get;
+
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
@@ -21,9 +25,6 @@ use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Transport;
 use Twig\Environment;
-
-use function DI\autowire;
-use function DI\get;
 
 return [
     Config::class => static fn (ContainerInterface $c): Config => new Config($c->get('settings')),

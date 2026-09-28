@@ -28,7 +28,6 @@ final class MemberService
         private readonly UserRepository $users,
         private readonly InvitationRepository $invitations,
         private readonly InvitationService $invitationService,
-        private readonly AccessService $access,
         private readonly MailService $mail,
         private readonly AuditService $audit,
         private readonly RateLimiter $rateLimiter,

@@ -48,7 +48,7 @@ final class MemberApiController extends Controller
      */
     public function update(Request $request, Response $response, array $args): Response
     {
-        $this->members->changePermission($this->user($request), $args['uuid'], $args['user'], RequestHelper::str($this->body($request), 'permission'), $this->ctx($request));
+        $this->members->changePermission($this->user($request), $args['uuid'], $args['member'], RequestHelper::str($this->body($request), 'permission'), $this->ctx($request));
 
         return $this->ok($response);
     }
@@ -58,7 +58,7 @@ final class MemberApiController extends Controller
      */
     public function remove(Request $request, Response $response, array $args): Response
     {
-        $this->members->remove($this->user($request), $args['uuid'], $args['user'], $this->ctx($request));
+        $this->members->remove($this->user($request), $args['uuid'], $args['member'], $this->ctx($request));
 
         return $this->ok($response);
     }

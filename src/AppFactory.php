@@ -16,7 +16,7 @@ use Slim\Factory\AppFactory as SlimAppFactory;
 final class AppFactory
 {
     /**
-     * @return App<ContainerInterface>
+     * @return App<ContainerInterface|null>
      */
     public static function create(ContainerInterface $container): App
     {

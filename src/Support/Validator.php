@@ -79,6 +79,9 @@ final class Validator
         return $this;
     }
 
+    /**
+     * @param list<string> $allowed
+     */
     public function in(string $field, array $allowed, string $label): self
     {
         if (!in_array($this->string($field), $allowed, true)) {

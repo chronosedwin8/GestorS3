@@ -46,7 +46,7 @@ final class TwigExtension extends AbstractExtension implements GlobalsInterface
             new TwigFilter('local_date', [$this, 'localDate']),
             new TwigFilter('iso', [Present::class, 'iso']),
             new TwigFilter('json_decode', static fn (?string $json): mixed => $json === null || $json === '' ? [] : (json_decode($json, true) ?? [])),
-            new TwigFilter('perm_label',static fn (?string $p): string => AccessService::LABELS[$p ?? ''] ?? (string) $p),
+            new TwigFilter('perm_label', static fn (?string $p): string => AccessService::LABELS[$p ?? ''] ?? (string) $p),
         ];
     }
 

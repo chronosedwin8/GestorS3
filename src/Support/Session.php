@@ -22,7 +22,7 @@ final class Session
         }
         if (PHP_SAPI === 'cli') {
             // Pruebas y consola: sesión en memoria, sin cookies.
-            if (!isset($_SESSION) || !is_array($_SESSION)) {
+            if (!isset($_SESSION)) {
                 $_SESSION = [];
             }
             $this->started = true;

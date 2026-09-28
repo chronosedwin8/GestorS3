@@ -40,8 +40,8 @@ final class AuditService
                 'target_type' => $targetType,
                 'target_id' => $targetId,
                 'meta' => $meta === [] ? null : json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
-                'ip' => $ctx?->ip ?? '',
-                'user_agent' => $ctx?->userAgent ?? '',
+                'ip' => $ctx->ip ?? '',
+                'user_agent' => $ctx->userAgent ?? '',
                 'created_at' => Repository::now(),
             ]);
         } catch (\Throwable $e) {

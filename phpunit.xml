@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <!-- Base de datos exclusiva para pruebas: se migra automáticamente y se vacía entre pruebas. -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_URL" value="http://localhost" force="true"/>
+        <env name="APP_KEY" value="dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktMTIzNDU=" force="true"/>
+        <env name="DB_NAME" value="fileshare_test" force="true"/>
+        <env name="AWS_ACCESS_KEY_ID" value="AKIATESTTESTTEST" force="true"/>
+        <env name="AWS_SECRET_ACCESS_KEY" value="test-secret" force="true"/>
+        <env name="AWS_REGION" value="us-east-1" force="true"/>
+        <env name="S3_BUCKET" value="bucket-de-pruebas" force="true"/>
+        <env name="S3_ENDPOINT" value="" force="true"/>
+        <env name="S3_PREFIX" value="" force="true"/>
+        <env name="MAIL_DSN" value="null://null" force="true"/>
+        <env name="LOG_LEVEL" value="error" force="true"/>
+    </php>
+</phpunit>

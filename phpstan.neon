@@ -1,0 +1,11 @@
+parameters:
+    level: 6
+    paths:
+        - src
+        - config
+        - tests
+    bootstrapFiles:
+        - tests/phpstan-bootstrap.php
+    tmpDir: storage/cache/phpstan
+    dynamicConstantNames:
+        - TEST_DB_AVAILABLE

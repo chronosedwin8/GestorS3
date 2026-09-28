@@ -85,8 +85,8 @@ return static function (App $app): void {
 
             $api->get("/folders/$uuid/members", [MemberApiController::class, 'list']);
             $api->post("/folders/$uuid/members", [MemberApiController::class, 'invite']);
-            $api->patch("/folders/$uuid/members/{user:[0-9a-fA-F-]{36}}", [MemberApiController::class, 'update']);
-            $api->delete("/folders/$uuid/members/{user:[0-9a-fA-F-]{36}}", [MemberApiController::class, 'remove']);
+            $api->patch("/folders/$uuid/members/{member:[0-9a-fA-F-]{36}}", [MemberApiController::class, 'update']);
+            $api->delete("/folders/$uuid/members/{member:[0-9a-fA-F-]{36}}", [MemberApiController::class, 'remove']);
             $api->delete("/invitations/$uuid", [MemberApiController::class, 'cancelInvitation']);
 
             $api->get("/folders/$uuid/share-links", [ShareLinkApiController::class, 'list']);

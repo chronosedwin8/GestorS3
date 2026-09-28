@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 $env = static function (string $key, mixed $default = null): mixed {
     $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    if ($value === false || $value === null || $value === '') {
+    if ($value === false || $value === '') {
         return $default;
     }
 

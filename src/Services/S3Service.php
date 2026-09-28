@@ -59,7 +59,8 @@ final class S3Service
                 'Metadata' => ['original-name' => rawurlencode($originalName)],
             ]);
             $request = $this->client->createPresignedRequest($command, '+' . $ttl . ' seconds');
-            $headers = [];
+            // Content-Type no se firma en URLs prefirmadas, pero el cliente debe enviarlo para que S3 guarde el tipo real.
+            $headers = ['Content-Type' => $contentType];
             foreach ($request->getHeaders() as $name => $values) {
                 $lower = strtolower($name);
                 if ($lower === 'host' || $lower === 'content-length' || $lower === 'user-agent' || $lower === 'aws-sdk-invocation-id' || $lower === 'aws-sdk-retry') {

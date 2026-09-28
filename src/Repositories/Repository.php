@@ -112,7 +112,7 @@ abstract class Repository
             return 'NULL';
         }
         $names = [];
-        foreach (array_values($values) as $i => $value) {
+        foreach ($values as $i => $value) {
             $name = $prefix . $i;
             $params[$name] = $value;
             $names[] = ':' . $name;

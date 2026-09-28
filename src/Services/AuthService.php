@@ -205,6 +205,21 @@ final class AuthService
         return $user;
     }
 
+    /**
+     * Enlace para que el usuario defina (o restablezca) su contraseña. Usado por el administrador
+     * al crear cuentas o para reenviar el acceso. Invalida los enlaces anteriores.
+     *
+     * @param array<string, mixed> $user
+     */
+    public function accessLink(array $user, int $days = 7): string
+    {
+        $plain = Token::random();
+        $this->tokens->invalidateForUser('password_resets', (int) $user['id']);
+        $this->tokens->create('password_resets', (int) $user['id'], $this->token->hash($plain), Repository::now('+' . max(1, $days) . ' days'));
+
+        return $this->config->url('/reset-password/' . $plain);
+    }
+
     // ------------------------------------------------------------------ Enlace mágico
 
     public function requestMagicLink(string $email, RequestContext $ctx): void
@@ -303,7 +318,7 @@ final class AuthService
             'name' => trim($name),
             'email' => $email,
             'password_hash' => self::hashPassword($password),
-            'role' => $role === 'admin' ? 'admin' : 'user',
+            'role' => in_array($role, ['admin', 'user', 'external'], true) ? $role : 'user',
             'email_verified_at' => Repository::now(),
             'status' => 'active',
             'created_at' => Repository::now(),

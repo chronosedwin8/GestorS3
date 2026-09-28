@@ -35,6 +35,11 @@
             </div>
         </div>
         <div>
+            <label class="label" for="internal_domains">Dominios de correo de la institución</label>
+            <input id="internal_domains" name="internal_domains" class="input font-mono" value="{{ settings.internal_domains.value }}" placeholder="miinstitucion.edu.co, miinstitucion.gov.co">
+            <p class="hint">Quien sea invitado desde una carpeta con un correo de estos dominios obtiene una cuenta de <strong>usuario de la institución</strong> (puede crear carpetas y compartir). Los demás quedan como <strong>externos</strong>: solo trabajan en lo que les compartan. Siempre puedes cambiar el tipo de cuenta en Usuarios.</p>
+        </div>
+        <div>
             <label class="label" for="blocked_extensions">Extensiones bloqueadas</label>
             <input id="blocked_extensions" name="blocked_extensions" class="input font-mono" value="{{ settings.blocked_extensions.value }}" placeholder="exe, bat, cmd…">
             <p class="hint">Separadas por comas. Déjalo vacío para permitir todas. <strong>Es un control blando</strong>: se basa en la extensión del nombre y puede evitarse renombrando el archivo o comprimiéndolo.</p>

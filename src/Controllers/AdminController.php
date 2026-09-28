@@ -39,9 +39,12 @@ final class AdminController extends Controller
         $page = max(1, (int) $this->query($request, 'page', '1'));
         $q = $this->query($request, 'q');
         $entity = $this->query($request, 'entity');
-        $result = $this->admin->users($q, $entity !== '' ? $entity : null, $page);
+        $role = $this->query($request, 'role');
+        $result = $this->admin->users($q, $entity !== '' ? $entity : null, $page, 25, $role);
         $inviteResults = $this->session->get('_invite_results');
         $this->session->remove('_invite_results');
+        $accessResult = $this->session->get('_access_result');
+        $this->session->remove('_access_result');
 
         return $this->render($response, 'admin/users.html.twig', [
             'section' => 'users',
@@ -54,14 +57,64 @@ final class AdminController extends Controller
             'entities' => $this->admin->entityOptions(),
             'invitations' => $this->admin->pendingInvitations(),
             'inviteResults' => is_array($inviteResults) ? $inviteResults : null,
+            'accessResult' => is_array($accessResult) ? $accessResult : null,
+            'role' => $role,
+            'roleLabels' => AdminService::ROLE_LABELS,
         ]);
+    }
+
+    public function createUser(Request $request, Response $response): Response
+    {
+        $body = $this->body($request);
+        try {
+            $result = $this->admin->createUser($this->user($request), $body, $this->ctx($request));
+        } catch (AppException $e) {
+            $this->session->flash('error', $e->getMessage());
+            $this->session->flashOld($body);
+
+            return $this->redirect($response, '/admin/users?crear=1');
+        }
+        $this->session->set('_access_result', [
+            'title' => 'Cuenta creada',
+            'name' => $result['user']['name'],
+            'email' => $result['user']['email'],
+            'role' => $result['user']['role'],
+            'password' => $result['password'],
+            'link' => $result['link'],
+            'mailed' => $result['mailed'],
+        ]);
+
+        return $this->redirect($response, '/admin/users');
+    }
+
+    /**
+     * @param array<string, string> $args
+     */
+    public function sendAccessLink(Request $request, Response $response, array $args): Response
+    {
+        try {
+            $result = $this->admin->sendAccessLink($this->user($request), $args['uuid'], $this->ctx($request));
+            $this->session->set('_access_result', [
+                'title' => 'Enlace de acceso generado',
+                'name' => $result['user']['name'],
+                'email' => $result['user']['email'],
+                'role' => $result['user']['role'],
+                'password' => null,
+                'link' => $result['link'],
+                'mailed' => $result['mailed'],
+            ]);
+        } catch (AppException $e) {
+            $this->session->flash('error', $e->getMessage());
+        }
+
+        return $this->redirect($response, '/admin/users');
     }
 
     public function inviteUsers(Request $request, Response $response): Response
     {
         $body = $this->body($request);
         try {
-            $results = $this->admin->inviteUsers($this->user($request), RequestHelper::str($body, 'emails'), RequestHelper::str($body, 'entity'), $this->ctx($request));
+            $results = $this->admin->inviteUsers($this->user($request), RequestHelper::str($body, 'emails'), RequestHelper::str($body, 'entity'), $this->ctx($request), RequestHelper::str($body, 'role', 'user'));
             $this->session->set('_invite_results', $results);
         } catch (AppException $e) {
             $this->session->flash('error', $e->getMessage());

@@ -56,7 +56,7 @@ final class UserRepository extends Repository
     /**
      * @return array{items: list<array<string, mixed>>, total: int}
      */
-    public function search(string $query, ?int $entityId, int $limit, int $offset): array
+    public function search(string $query, ?int $entityId, int $limit, int $offset, ?string $role = null): array
     {
         $where = ['1 = 1'];
         $params = [];
@@ -67,6 +67,10 @@ final class UserRepository extends Repository
         if ($entityId !== null) {
             $where[] = 'u.entity_id = :entity';
             $params['entity'] = $entityId;
+        }
+        if ($role !== null && $role !== '') {
+            $where[] = 'u.role = :role';
+            $params['role'] = $role;
         }
         $whereSql = implode(' AND ', $where);
         $total = (int) $this->scalar("SELECT COUNT(*) FROM users u WHERE $whereSql", $params);

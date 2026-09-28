@@ -36,6 +36,7 @@ final class InvitationService
         private readonly MailService $mail,
         private readonly AuditService $audit,
         private readonly AuthService $auth,
+        private readonly SettingsService $settings,
     ) {
     }
 
@@ -44,12 +45,14 @@ final class InvitationService
      *
      * @param array<string, mixed> $inviter
      * @param array<string, mixed>|null $folder carpeta raíz a la que se invita
+     * @param string|null $role tipo de cuenta al registrarse (user|external); null = según el dominio del correo
      *
      * @return array{url: string, mailed: bool}
      */
-    public function invite(string $email, array $inviter, ?array $folder, ?string $permission, ?int $entityId, RequestContext $ctx): array
+    public function invite(string $email, array $inviter, ?array $folder, ?string $permission, ?int $entityId, RequestContext $ctx, ?string $role = null): array
     {
         $email = Validator::normalizeEmail($email);
+        $role = in_array($role, ['user', 'external'], true) ? $role : $this->settings->roleForEmail($email);
         if ($entityId === null) {
             $domain = substr((string) strrchr($email, '@'), 1);
             $entity = $domain !== '' ? $this->entities->findByDomain($domain) : null;
@@ -61,7 +64,7 @@ final class InvitationService
         $folderId = $folder !== null ? (int) $folder['id'] : null;
         $existing = $this->invitations->findPending($email, $folderId);
         if ($existing !== null) {
-            $this->invitations->refresh((int) $existing['id'], $hash, $expires, $permission);
+            $this->invitations->refresh((int) $existing['id'], $hash, $expires, $permission, $role);
             $invitationId = (int) $existing['id'];
         } else {
             $invitationId = $this->invitations->create([
@@ -71,6 +74,7 @@ final class InvitationService
                 'invited_by' => (int) $inviter['id'],
                 'folder_id' => $folderId,
                 'permission' => $folder !== null ? $permission : null,
+                'role' => $role,
                 'token_hash' => $hash,
                 'expires_at' => $expires,
                 'created_at' => Repository::now(),
@@ -156,14 +160,17 @@ final class InvitationService
             ]);
         }
         $password = is_string($input['password'] ?? null) ? $input['password'] : '';
-        $userId = $this->users->transaction(function () use ($email, $v, $entityId, $password): int {
+        $role = in_array($invitation['role'] ?? null, ['user', 'external'], true)
+            ? (string) $invitation['role']
+            : ($invitation['folder_id'] !== null ? $this->settings->roleForEmail($email) : 'user');
+        $userId = $this->users->transaction(function () use ($email, $v, $entityId, $password, $role): int {
             return $this->users->create([
                 'uuid' => Uuid::v4(),
                 'entity_id' => $entityId,
                 'name' => $v->string('name'),
                 'email' => $email,
                 'password_hash' => AuthService::hashPassword($password),
-                'role' => 'user',
+                'role' => $role,
                 'email_verified_at' => Repository::now(),
                 'status' => 'active',
                 'created_at' => Repository::now(),
@@ -181,7 +188,7 @@ final class InvitationService
     /**
      * @param array<string, mixed> $user
      */
-    private function applyPendingInvitations(array $user): void
+    public function applyPendingInvitations(array $user): void
     {
         foreach ($this->invitations->pendingForEmail((string) $user['email']) as $pending) {
             if ($pending['folder_id'] !== null && $this->folders->find((int) $pending['folder_id']) !== null) {

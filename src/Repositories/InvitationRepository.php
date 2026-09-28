@@ -69,9 +69,9 @@ final class InvitationRepository extends Repository
         return $this->all(self::SELECT . " WHERE i.accepted_at IS NULL AND i.expires_at > ? ORDER BY i.created_at DESC LIMIT $limit", [self::now()]);
     }
 
-    public function refresh(int $id, string $tokenHash, string $expiresAt, ?string $permission): void
+    public function refresh(int $id, string $tokenHash, string $expiresAt, ?string $permission, ?string $role = null): void
     {
-        $this->exec('UPDATE invitations SET token_hash = ?, expires_at = ?, permission = COALESCE(?, permission) WHERE id = ?', [$tokenHash, $expiresAt, $permission, $id]);
+        $this->exec('UPDATE invitations SET token_hash = ?, expires_at = ?, permission = COALESCE(?, permission), role = COALESCE(?, role) WHERE id = ?', [$tokenHash, $expiresAt, $permission, $role, $id]);
     }
 
     public function markAccepted(int $id): void

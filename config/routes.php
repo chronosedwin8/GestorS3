@@ -58,7 +58,9 @@ return static function (App $app): void {
         $g->group('/admin', function (RouteCollectorProxy $a) use ($uuid): void {
             $a->get('', [AdminController::class, 'index']);
             $a->get('/users', [AdminController::class, 'users']);
+            $a->post('/users', [AdminController::class, 'createUser']);
             $a->post('/users/invite', [AdminController::class, 'inviteUsers']);
+            $a->post("/users/$uuid/access-link", [AdminController::class, 'sendAccessLink']);
             $a->post("/users/$uuid", [AdminController::class, 'updateUser']);
             $a->get('/entities', [AdminController::class, 'entities']);
             $a->post('/entities', [AdminController::class, 'createEntity']);

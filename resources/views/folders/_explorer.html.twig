@@ -34,17 +34,20 @@
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 id="home-title" class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Hola, {{ app.user.name|split(' ')|first }}</h1>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Crea una carpeta, sube tus archivos y compártela con quien necesites.</p>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ app.canCreateFolders ? 'Crea una carpeta, sube tus archivos y compártela con quien necesites.' : 'Aquí están las carpetas que compartieron contigo.' }}</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icon('search', 'h-4 w-4') }}</span>
                         <input type="search" x-model="homeFilter" placeholder="Filtrar por nombre…" class="input pl-9 sm:w-60" aria-label="Filtrar carpetas por nombre">
                     </div>
+                    {% if app.canCreateFolders %}
                     <button type="button" class="btn-primary" @click="openNewFolder(true)">{{ icon('folder-plus', 'h-4 w-4') }} Nueva carpeta</button>
+                    {% endif %}
                 </div>
             </div>
 
+            {% if app.canCreateFolders %}
             <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Mis carpetas <span class="font-normal" x-text="'(' + home.mine.length + ')'"></span></h2>
             <template x-if="!home.mine.length">
                 <button type="button" @click="openNewFolder(true)" class="mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 px-6 py-12 text-center transition hover:border-brand-400 hover:bg-brand-50/40 dark:border-slate-700 dark:hover:bg-brand-500/5">
@@ -74,11 +77,14 @@
                 </template>
             </div>
 
-            <h2 class="mt-10 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Compartidas conmigo <span class="font-normal" x-text="'(' + home.shared.length + ')'"></span></h2>
+            {% endif %}
+
+            <h2 class="{{ app.canCreateFolders ? 'mt-10' : 'mt-8' }} text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Compartidas conmigo <span class="font-normal" x-text="'(' + home.shared.length + ')'"></span></h2>
             <template x-if="!home.shared.length">
                 <div class="mt-3 rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
                     {{ icon('users', 'mx-auto h-8 w-8 text-slate-300') }}
                     <p class="mt-2">Cuando alguien comparta una carpeta contigo, aparecerá aquí.</p>
+                    {% if not app.canCreateFolders %}<p class="mt-1 text-xs">Tu cuenta es de invitado externo: trabajas en las carpetas que otras personas comparten contigo.</p>{% endif %}
                 </div>
             </template>
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

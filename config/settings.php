@@ -31,6 +31,7 @@ return [
         'key' => (string) $env('APP_KEY', ''),
         'timezone' => (string) $env('APP_TIMEZONE', 'America/Bogota'),
         'locale' => (string) $env('APP_LOCALE', 'es'),
+        'internal_domains' => (string) $env('INTERNAL_DOMAINS', ''),
         'root' => dirname(__DIR__),
     ],
     'db' => [

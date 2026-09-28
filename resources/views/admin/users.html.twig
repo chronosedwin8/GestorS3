@@ -1,22 +1,62 @@
 {% extends 'admin/layout.html.twig' %}
 {% set pageTitle = 'Usuarios' %}
 
+{% macro roleBadge(role) %}
+    {% if role == 'admin' %}<span class="badge-brand">Administrador</span>
+    {% elseif role == 'external' %}<span class="badge-amber">Externo</span>
+    {% else %}<span class="badge-green">Institución</span>{% endif %}
+{% endmacro %}
+
+{% macro copyField(value, label) %}
+    <div class="mt-1 flex items-center gap-2" x-data="{ copied: false }">
+        <input readonly value="{{ value }}" class="input py-1.5 font-mono text-xs" aria-label="{{ label }}" @focus="$event.target.select()">
+        <button type="button" class="btn-secondary btn-sm shrink-0" @click="navigator.clipboard.writeText($el.previousElementSibling.value).then(() => { copied = true; setTimeout(() => copied = false, 2000) })">
+            <span x-text="copied ? 'Copiado' : 'Copiar'">Copiar</span>
+        </button>
+    </div>
+{% endmacro %}
+
 {% block admin %}
+{% import _self as ui %}
+
+{# Resultado de crear un usuario o generar su enlace de acceso #}
+{% if accessResult %}
+<div class="alert-success mb-6 flex-col" role="status">
+    <p class="font-semibold">{{ accessResult.title }}: {{ accessResult.name }} ({{ accessResult.email }}) · {{ roleLabels[accessResult.role] ?? accessResult.role }}</p>
+    {% if accessResult.mailed %}
+        <p>Le enviamos un correo con un enlace para entrar y definir su contraseña (válido por 7 días).</p>
+    {% elseif accessResult.link %}
+        <p>No se pudo enviar el correo (el servidor de correo no está configurado). Comparte este enlace con la persona para que defina su contraseña (válido por 7 días):</p>
+        {{ ui.copyField(accessResult.link, 'Enlace de acceso') }}
+    {% endif %}
+    {% if accessResult.password %}
+        <p class="mt-2">Contraseña temporal (solo se muestra esta vez; la persona puede cambiarla desde “Mi perfil”):</p>
+        {{ ui.copyField(accessResult.password, 'Contraseña temporal') }}
+    {% endif %}
+</div>
+{% endif %}
+
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="lg:col-span-2">
-        <form method="get" action="{{ url('/admin/users') }}" class="flex flex-col gap-2 sm:flex-row">
-            <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre o correo…" class="input sm:max-w-xs">
-            <select name="entity" class="input sm:max-w-xs">
-                <option value="">Todas las entidades</option>
-                {% for e in entities %}<option value="{{ e.uuid }}" {{ entity == e.uuid ? 'selected' : '' }}>{{ e.name }}</option>{% endfor %}
-            </select>
-            <button type="submit" class="btn-secondary">{{ icon('search', 'h-4 w-4') }} Filtrar</button>
-        </form>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <form method="get" action="{{ url('/admin/users') }}" class="flex flex-1 flex-col gap-2 sm:flex-row">
+                <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre o correo…" class="input sm:max-w-[14rem]">
+                <select name="role" class="input sm:max-w-[12rem]" aria-label="Tipo de cuenta">
+                    <option value="">Todos los tipos</option>
+                    {% for key, label in roleLabels %}<option value="{{ key }}" {{ role == key ? 'selected' : '' }}>{{ label }}</option>{% endfor %}
+                </select>
+                <select name="entity" class="input sm:max-w-[12rem]" aria-label="Entidad">
+                    <option value="">Todas las entidades</option>
+                    {% for e in entities %}<option value="{{ e.uuid }}" {{ entity == e.uuid ? 'selected' : '' }}>{{ e.name }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-secondary">{{ icon('search', 'h-4 w-4') }} Filtrar</button>
+            </form>
+        </div>
 
         <p class="mt-4 text-sm text-slate-500">{{ total }} usuario{{ total == 1 ? '' : 's' }}</p>
         <div class="card mt-2 overflow-x-auto">
             <table class="admin-table">
-                <thead><tr><th>Usuario</th><th>Entidad</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead>
+                <thead><tr><th>Usuario</th><th>Entidad</th><th>Tipo</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead>
                 <tbody>
                 {% for u in users %}
                     <tr x-data="{ edit: false }">
@@ -25,36 +65,45 @@
                             <p class="text-xs text-slate-500">{{ u.email }}</p>
                         </td>
                         <td class="text-slate-600 dark:text-slate-300">{{ u.entity_name ?: '—' }}</td>
-                        <td>{% if u.role == 'admin' %}<span class="badge-brand">Admin</span>{% else %}<span class="badge-gray">Usuario</span>{% endif %}</td>
+                        <td class="whitespace-nowrap">{{ ui.roleBadge(u.role) }}</td>
                         <td>{% if u.status == 'active' %}<span class="badge-green">Activo</span>{% else %}<span class="badge-red">Deshabilitado</span>{% endif %}</td>
-                        <td class="whitespace-nowrap text-xs text-slate-500">{{ u.last_login_at|local_date }}</td>
+                        <td class="whitespace-nowrap text-xs text-slate-500">{{ u.last_login_at ? u.last_login_at|local_date : 'Nunca' }}</td>
                         <td class="text-right">
                             <button type="button" class="btn-ghost btn-sm" @click="edit = true">{{ icon('pencil', 'h-3.5 w-3.5') }} Editar</button>
                             <template x-teleport="body">
                                 <div x-show="edit" x-cloak @keydown.escape.window="edit = false">
                                     <div class="modal-backdrop" @click="edit = false"></div>
                                     <div class="modal-wrap pointer-events-none">
-                                        <form method="post" action="{{ url('/admin/users/' ~ u.uuid) }}" class="modal-panel pointer-events-auto max-w-md space-y-4 p-6 text-left">
-                                            <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
-                                            <h2 class="text-lg font-semibold">Editar usuario</h2>
-                                            <p class="text-sm text-slate-500">{{ u.email }}</p>
-                                            <div><label class="label">Nombre</label><input name="name" value="{{ u.name }}" required class="input"></div>
-                                            <div><label class="label">Entidad</label>
-                                                <select name="entity" class="input">
-                                                    <option value="">Sin entidad</option>
-                                                    {% for e in entities %}<option value="{{ e.uuid }}" {{ u.entity_uuid == e.uuid ? 'selected' : '' }}>{{ e.name }}</option>{% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="grid grid-cols-2 gap-3">
-                                                <div><label class="label">Rol</label>
-                                                    <select name="role" class="input"><option value="user" {{ u.role == 'user' ? 'selected' : '' }}>Usuario</option><option value="admin" {{ u.role == 'admin' ? 'selected' : '' }}>Administrador</option></select>
+                                        <div class="modal-panel pointer-events-auto max-w-md p-6 text-left">
+                                            <form method="post" action="{{ url('/admin/users/' ~ u.uuid) }}" class="space-y-4">
+                                                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
+                                                <h2 class="text-lg font-semibold">Editar usuario</h2>
+                                                <p class="text-sm text-slate-500">{{ u.email }}</p>
+                                                <div><label class="label">Nombre</label><input name="name" value="{{ u.name }}" required class="input"></div>
+                                                <div><label class="label">Entidad</label>
+                                                    <select name="entity" class="input">
+                                                        <option value="">Sin entidad</option>
+                                                        {% for e in entities %}<option value="{{ e.uuid }}" {{ u.entity_uuid == e.uuid ? 'selected' : '' }}>{{ e.name }}</option>{% endfor %}
+                                                    </select>
                                                 </div>
-                                                <div><label class="label">Estado</label>
-                                                    <select name="status" class="input"><option value="active" {{ u.status == 'active' ? 'selected' : '' }}>Activo</option><option value="disabled" {{ u.status == 'disabled' ? 'selected' : '' }}>Deshabilitado</option></select>
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    <div><label class="label">Tipo de cuenta</label>
+                                                        <select name="role" class="input">
+                                                            {% for key, label in roleLabels %}<option value="{{ key }}" {{ u.role == key ? 'selected' : '' }}>{{ label }}</option>{% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div><label class="label">Estado</label>
+                                                        <select name="status" class="input"><option value="active" {{ u.status == 'active' ? 'selected' : '' }}>Activo</option><option value="disabled" {{ u.status == 'disabled' ? 'selected' : '' }}>Deshabilitado</option></select>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" @click="edit = false">Cancelar</button><button class="btn-primary">Guardar</button></div>
-                                        </form>
+                                                <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" @click="edit = false">Cancelar</button><button class="btn-primary">Guardar</button></div>
+                                            </form>
+                                            <form method="post" action="{{ url('/admin/users/' ~ u.uuid ~ '/access-link') }}" class="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+                                                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
+                                                <p class="text-sm text-slate-600 dark:text-slate-300">¿Olvidó su contraseña o nunca entró? Envíale un enlace para definir una nueva (válido 7 días).</p>
+                                                <button class="btn-secondary btn-sm mt-2">{{ icon('mail', 'h-3.5 w-3.5') }} Enviar enlace de acceso</button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -66,28 +115,80 @@
                 </tbody>
             </table>
         </div>
-        {% include 'admin/_pagination.html.twig' with { base: url('/admin/users') ~ '?q=' ~ q|url_encode ~ '&entity=' ~ entity|url_encode ~ '&' } %}
+        {% include 'admin/_pagination.html.twig' with { base: url('/admin/users') ~ '?q=' ~ q|url_encode ~ '&role=' ~ role|url_encode ~ '&entity=' ~ entity|url_encode ~ '&' } %}
     </div>
 
     <aside class="space-y-6">
+        {# ---------------------------------------------------------------- Crear usuario #}
+        <section id="crear" class="card p-5" x-data="{ role: '{{ app.old('role', 'user') }}', ownPassword: false }">
+            <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">{{ icon('user-plus', 'h-4 w-4') }} Crear usuario</h2>
+            <p class="mt-1 text-sm text-slate-500">Crea la cuenta directamente, sin esperar a que acepte una invitación.</p>
+            <form method="post" action="{{ url('/admin/users') }}" class="mt-4 space-y-3">
+                <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
+                <div><label class="label" for="cu-name">Nombre completo</label><input id="cu-name" name="name" required maxlength="150" class="input" value="{{ app.old('name') }}" placeholder="Ej.: María Pérez"></div>
+                <div><label class="label" for="cu-email">Correo</label><input id="cu-email" name="email" type="email" required class="input" value="{{ app.old('email') }}" placeholder="nombre@entidad.com"></div>
+                <div>
+                    <span class="label">Tipo de cuenta</span>
+                    <div class="space-y-2">
+                        <label class="flex cursor-pointer gap-2 rounded-lg border p-2.5 text-sm" :class="role === 'user' ? 'border-brand-400 bg-brand-50/60 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+                            <input type="radio" name="role" value="user" x-model="role" class="mt-0.5 text-brand-600">
+                            <span><span class="block font-medium">Usuario de la institución</span><span class="block text-xs text-slate-500">Crea carpetas, sube archivos y los comparte con cualquier persona, también externa.</span></span>
+                        </label>
+                        <label class="flex cursor-pointer gap-2 rounded-lg border p-2.5 text-sm" :class="role === 'external' ? 'border-brand-400 bg-brand-50/60 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+                            <input type="radio" name="role" value="external" x-model="role" class="mt-0.5 text-brand-600">
+                            <span><span class="block font-medium">Externo</span><span class="block text-xs text-slate-500">Solo ve lo que le compartan; puede subir si le dan permiso de editor.</span></span>
+                        </label>
+                        <label class="flex cursor-pointer gap-2 rounded-lg border p-2.5 text-sm" :class="role === 'admin' ? 'border-brand-400 bg-brand-50/60 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+                            <input type="radio" name="role" value="admin" x-model="role" class="mt-0.5 text-brand-600">
+                            <span><span class="block font-medium">Administrador</span><span class="block text-xs text-slate-500">Todo lo anterior y además gestiona usuarios y configuración.</span></span>
+                        </label>
+                    </div>
+                </div>
+                <div><label class="label" for="cu-entity">Entidad</label>
+                    <select id="cu-entity" name="entity" class="input">
+                        <option value="">Sin entidad</option>
+                        {% for e in entities %}<option value="{{ e.uuid }}" {{ app.old('entity') == e.uuid ? 'selected' : '' }}>{{ e.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="send_welcome" value="1" checked class="mt-0.5 rounded text-brand-600">
+                    <span>Enviar correo de bienvenida con un enlace para que defina su contraseña</span>
+                </label>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" x-model="ownPassword" class="mt-0.5 rounded text-brand-600">
+                    <span>Definir yo la contraseña <span class="text-slate-400">(si no, se genera una temporal)</span></span>
+                </label>
+                <div x-show="ownPassword" x-cloak>
+                    <label class="label" for="cu-pass">Contraseña</label>
+                    <input id="cu-pass" name="password" type="text" minlength="8" autocomplete="new-password" class="input" :disabled="!ownPassword" placeholder="Mínimo 8 caracteres">
+                </div>
+                <button type="submit" class="btn-primary w-full">Crear usuario</button>
+            </form>
+        </section>
+
+        {# ---------------------------------------------------------------- Invitar #}
         <section class="card p-5">
-            <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">{{ icon('user-plus', 'h-4 w-4') }} Invitar usuarios</h2>
-            <p class="mt-1 text-sm text-slate-500">Recibirán un correo para crear su cuenta. Para darles acceso a una carpeta, invítalos desde la propia carpeta.</p>
+            <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">{{ icon('mail', 'h-4 w-4') }} Invitar por correo</h2>
+            <p class="mt-1 text-sm text-slate-500">La persona recibe un enlace y crea su cuenta ella misma. Para darle acceso a una carpeta concreta, invítala desde esa carpeta.</p>
             <form method="post" action="{{ url('/admin/users/invite') }}" class="mt-4 space-y-3">
                 <input type="hidden" name="_csrf" value="{{ app.csrf }}" hidden>
                 <textarea name="emails" rows="3" required class="input" placeholder="correo@entidad.com, otro@empresa.co"></textarea>
-                <select name="entity" class="input">
+                <select name="role" class="input" aria-label="Tipo de cuenta">
+                    <option value="user">Usuario de la institución</option>
+                    <option value="external">Externo</option>
+                </select>
+                <select name="entity" class="input" aria-label="Entidad">
                     <option value="">Entidad (automática por dominio)</option>
                     {% for e in entities %}<option value="{{ e.uuid }}">{{ e.name }}</option>{% endfor %}
                 </select>
-                <button type="submit" class="btn-primary w-full">Enviar invitaciones</button>
+                <button type="submit" class="btn-secondary w-full">Enviar invitaciones</button>
             </form>
             {% if inviteResults %}
                 <ul class="mt-4 space-y-2 text-sm">
                     {% for r in inviteResults %}
                         <li class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
                             <p><strong>{{ r.email }}</strong> — {{ r.message }}</p>
-                            {% if r.link %}<input readonly value="{{ r.link }}" class="input mt-1 py-1 text-xs" x-data @focus="$event.target.select()">{% endif %}
+                            {% if r.link %}{{ ui.copyField(r.link, 'Enlace de invitación') }}{% endif %}
                         </li>
                     {% endfor %}
                 </ul>
@@ -99,7 +200,7 @@
             <ul class="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
                 {% for i in invitations %}
                     <li class="py-2">
-                        <p class="truncate font-medium">{{ i.email }}</p>
+                        <p class="truncate font-medium">{{ i.email }} {% if i.role == 'external' %}<span class="badge-amber ml-1">Externo</span>{% endif %}</p>
                         <p class="truncate text-xs text-slate-500">{{ i.folder_name ? 'Carpeta: ' ~ i.folder_name : 'Sin carpeta' }} · por {{ i.inviter_name }} · vence {{ i.expires_at|local_date('d/m/Y') }}</p>
                     </li>
                 {% else %}

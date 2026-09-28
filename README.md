@@ -28,7 +28,9 @@ La especificación completa está en [CLAUDE.md](CLAUDE.md).
 ## Funcionalidades
 
 **Cuentas y permisos**
-- Registro **solo por invitación**. El invitado recibe un enlace, escribe su nombre, su entidad (opcional) y una contraseña, y entra en menos de un minuto. Cualquier dominio de correo es válido.
+- No hay registro abierto: el **administrador crea las cuentas** (Administración → Usuarios → *Crear usuario*) o se accede **por invitación** (el invitado recibe un enlace, escribe su nombre, entidad opcional y contraseña, y entra en menos de un minuto). Cualquier dominio de correo es válido.
+- **Tipos de cuenta**: *Administrador*; *Usuario de la institución* (crea carpetas, sube archivos y los comparte con cualquier persona, también externa); *Externo* (solo trabaja en las carpetas que le compartan: ver y descargar, o también subir si le dan permiso de editor; no crea carpetas propias). Quien es invitado desde una carpeta queda como *Externo*, salvo que su correo pertenezca a uno de los **dominios de la institución** (Administración → Límites o `INTERNAL_DOMAINS`). El tipo de cuenta se puede cambiar en cualquier momento.
+- Al crear una cuenta, el administrador puede fijar la contraseña o dejar que se genere una temporal, y enviar un **correo de bienvenida** con un enlace (7 días) para que la persona defina la suya. Desde *Editar* puede reenviar ese enlace si alguien olvidó su contraseña. Si no hay servidor de correo, la app muestra el enlace para copiarlo.
 - Inicio de sesión con contraseña (argon2id), **recuperación por correo** y **enlace mágico** (acceso sin contraseña, de un solo uso, 20 min; la sesión dura menos y no permite entrar a la administración).
 - Permisos por carpeta raíz, heredados por las subcarpetas: **Propietario** (todo), **Editor** (subir, renombrar, eliminar, crear subcarpetas, invitar lectores), **Lector** (ver y descargar).
 - **Entidades** (organizaciones) para agrupar usuarios; el dominio es informativo y sirve para asignar la entidad automáticamente.
@@ -52,7 +54,7 @@ La especificación completa está en [CLAUDE.md](CLAUDE.md).
 - **Enlaces públicos** de solo lectura con contraseña, vencimiento y límite de descargas opcionales; revocables. Cada descarga queda registrada.
 - Notificaciones por correo: “Te compartieron una carpeta”, “Se subieron N archivos”.
 
-**Administración**: usuarios (rol, estado, entidad), invitaciones, entidades, límites ajustables, registro de actividad con filtros y uso de almacenamiento por carpeta raíz.
+**Administración**: crear usuarios, editar (tipo de cuenta, estado, entidad) y reenviar acceso, invitaciones, entidades, dominios de la institución, límites ajustables, registro de actividad con filtros y uso de almacenamiento por carpeta raíz.
 
 **Interfaz**: en español, responsive (móvil y escritorio), modo oscuro automático, accesible (teclado, `aria-live` para el estado de subidas), búsqueda global.
 
@@ -113,6 +115,7 @@ Toda la configuración está en `.env` (ver [.env.example](.env.example), docume
 | Variable | Descripción |
 |---|---|
 | `APP_URL` | URL pública completa (incluye el subdirectorio si aplica). Define también el origen para CORS y si la cookie es `Secure`. |
+| `INTERNAL_DOMAINS` | Dominios de correo de la institución (separados por comas). Las invitaciones a esos correos crean cuentas de *usuario*; las demás, *externas*. Editable también desde el panel. |
 | `APP_KEY` | 32 bytes en base64. Firma tokens (invitaciones, enlaces mágicos, enlaces públicos). Si cambia, los enlaces públicos existentes dejan de funcionar. |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `S3_BUCKET` | Acceso a S3. |
 | `S3_PREFIX` | Subdirectorio opcional dentro del bucket. |

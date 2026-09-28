@@ -19,6 +19,7 @@ final class SettingsService
         'zip_max_bytes' => 'limits.zip_max_bytes',
         'zip_max_files' => 'limits.zip_max_files',
         'blocked_extensions' => 'limits.blocked_extensions',
+        'internal_domains' => 'app.internal_domains',
     ];
 
     /** @var array<string, string|null>|null */
@@ -71,6 +72,42 @@ final class SettingsService
     public function isBlocked(string $extension): bool
     {
         return $extension !== '' && in_array(strtolower($extension), $this->blockedExtensions(), true);
+    }
+
+    /**
+     * Dominios de correo de la institución (sus cuentas nuevas son "usuario", las demás "externo").
+     *
+     * @return list<string>
+     */
+    public function internalDomains(): array
+    {
+        return self::parseDomains((string) $this->value('internal_domains'));
+    }
+
+    /**
+     * Tipo de cuenta para un correo nuevo invitado desde una carpeta.
+     */
+    public function roleForEmail(string $email): string
+    {
+        $domain = strtolower(substr((string) strrchr($email, '@'), 1));
+        foreach ($this->internalDomains() as $internal) {
+            if ($domain === $internal || str_ends_with($domain, '.' . $internal)) {
+                return 'user';
+            }
+        }
+
+        return 'external';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function parseDomains(string $value): array
+    {
+        $parts = preg_split('/[\s,;]+/', strtolower($value)) ?: [];
+        $parts = array_map(static fn (string $p): string => ltrim(trim($p), '@'), $parts);
+
+        return array_values(array_unique(array_filter($parts, static fn (string $p): bool => preg_match('/^[a-z0-9-]+(\.[a-z0-9-]+)+$/', $p) === 1)));
     }
 
     /**

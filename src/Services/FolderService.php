@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\ConflictException;
+use App\Exceptions\ForbiddenException;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
 use App\Repositories\FileRepository;
@@ -57,6 +58,14 @@ final class FolderService
         return [$folder, $permission];
     }
 
+    /**
+     * @param array<string, mixed> $user
+     */
+    public static function canCreateRoot(array $user): bool
+    {
+        return in_array($user['role'] ?? '', ['admin', 'user'], true);
+    }
+
     public static function cleanName(string $name, string $what = 'la carpeta'): string
     {
         $clean = FileName::sanitize($name);
@@ -74,6 +83,9 @@ final class FolderService
      */
     public function createRoot(array $user, string $name, ?string $description, RequestContext $ctx): array
     {
+        if (!self::canCreateRoot($user)) {
+            throw new ForbiddenException('Tu cuenta es de invitado externo: puedes trabajar en las carpetas que te compartan, pero no crear carpetas nuevas. Si lo necesitas, pídelo al administrador.', 'external_account');
+        }
         $name = self::cleanName($name);
         $description = $description !== null ? mb_substr(trim($description), 0, 1000) : null;
         foreach ($this->folders->rootsWithStats((int) $user['id']) as $root) {

@@ -1,0 +1,16 @@
+{% extends 'emails/layout.html.twig' %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Tu cuenta está lista</h1>
+<p style="margin:0 0 12px;">Hola {{ name }},</p>
+<p style="margin:0 0 12px;"><strong>{{ adminName }}</strong> te dio acceso a {{ appName }} como <strong>{{ roleLabel|lower }}</strong>.</p>
+<p style="margin:0;">
+    {% if canCreate %}
+        Podrás crear carpetas, subir archivos de cualquier tipo y compartirlos con personas de dentro o fuera de tu institución.
+    {% else %}
+        Podrás ver, descargar y (si te dan permiso) subir archivos en las carpetas que compartan contigo.
+    {% endif %}
+    Para entrar, define tu contraseña con el siguiente botón.
+</p>
+{% include 'emails/_button.html.twig' with { url: url, label: 'Definir mi contraseña y entrar' } %}
+<p style="margin:16px 0 0;font-size:13px;color:#64748b;">El enlace vence en {{ days }} días. Después podrás pedir uno nuevo con “Olvidé mi contraseña” o entrar con un enlace de acceso por correo.</p>
+{% endblock %}

@@ -55,6 +55,14 @@ final class ViewContext
         return ($this->user['role'] ?? '') === 'admin';
     }
 
+    /**
+     * Las cuentas externas no crean carpetas raíz: solo trabajan en las que les comparten.
+     */
+    public function canCreateFolders(): bool
+    {
+        return $this->user !== null && \App\Services\FolderService::canCreateRoot($this->user);
+    }
+
     public function name(): string
     {
         return $this->config->string('app.name');
@@ -112,6 +120,7 @@ final class ViewContext
                 'name' => $this->user['name'],
                 'email' => $this->user['email'],
                 'isAdmin' => $this->isAdmin(),
+                'canCreateFolders' => $this->canCreateFolders(),
             ],
             'limits' => $this->user === null ? null : $this->settings->clientLimits(),
             'appOrigin' => self::origin($this->config->string('app.url')),

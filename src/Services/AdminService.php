@@ -14,6 +14,7 @@ use App\Repositories\FolderRepository;
 use App\Repositories\InvitationRepository;
 use App\Repositories\Repository;
 use App\Repositories\UserRepository;
+use App\Support\Config;
 use App\Support\RequestContext;
 use App\Support\Uuid;
 use App\Support\Validator;
@@ -32,13 +33,139 @@ final class AdminService
         private readonly InvitationService $invitationService,
         private readonly SettingsService $settings,
         private readonly AuditService $audit,
+        private readonly AuthService $auth,
+        private readonly MailService $mail,
+        private readonly Config $config,
     ) {
+    }
+
+    public const ROLE_LABELS = [
+        'admin' => 'Administrador',
+        'user' => 'Usuario de la institución',
+        'external' => 'Externo',
+    ];
+
+    /**
+     * Crea una cuenta directamente. Si no se indica contraseña se genera una temporal; opcionalmente
+     * envía un correo de bienvenida con un enlace para que la persona defina su propia contraseña.
+     *
+     * @param array<string, mixed> $admin
+     * @param array<string, mixed> $input
+     *
+     * @return array{user: array<string, mixed>, password: string|null, link: string|null, mailed: bool}
+     */
+    public function createUser(array $admin, array $input, RequestContext $ctx): array
+    {
+        $v = Validator::make($input)
+            ->required('name', 'El nombre')->maxLength('name', 150, 'El nombre')
+            ->required('email', 'El correo')->email('email')
+            ->in('role', array_keys(self::ROLE_LABELS), 'El tipo de cuenta');
+        $email = Validator::normalizeEmail($v->string('email'));
+        if ($email !== '' && $this->users->findByEmail($email) !== null) {
+            $v->addError('email', 'Ya existe una cuenta con ese correo.');
+        }
+        $password = is_string($input['password'] ?? null) ? $input['password'] : '';
+        if ($password !== '') {
+            $v->password('password');
+        }
+        $v->validate();
+
+        $entityId = $this->entityIdFrom($v->string('entity'));
+        $generated = null;
+        if ($password === '') {
+            $generated = self::generatePassword();
+            $password = $generated;
+        }
+        $role = $v->string('role');
+        $user = $this->auth->createUser($email, $v->string('name'), $password, $role, $entityId);
+        // Si ya la habían invitado a carpetas, aplicar esos accesos.
+        $this->invitationService->applyPendingInvitations($user);
+
+        $link = null;
+        $mailed = false;
+        if (!empty($input['send_welcome'])) {
+            $link = $this->auth->accessLink($user, 7);
+            $mailed = $this->mail->send($email, sprintf('%s creó tu cuenta en %s', $admin['name'], $this->settingsAppName()), 'welcome', [
+                'name' => $user['name'],
+                'adminName' => $admin['name'],
+                'roleLabel' => self::ROLE_LABELS[$role],
+                'canCreate' => $role !== 'external',
+                'url' => $link,
+                'days' => 7,
+            ]);
+        }
+        $this->audit->log('user_create', (int) $admin['id'], 'user', (int) $user['id'], ['email' => $email, 'role' => $role], $ctx);
+
+        return ['user' => $user, 'password' => $generated, 'link' => $link, 'mailed' => $mailed];
+    }
+
+    /**
+     * Genera un enlace para que el usuario defina una nueva contraseña y se lo envía por correo.
+     *
+     * @param array<string, mixed> $admin
+     *
+     * @return array{user: array<string, mixed>, link: string, mailed: bool}
+     */
+    public function sendAccessLink(array $admin, string $uuid, RequestContext $ctx): array
+    {
+        $user = $this->users->findByUuid($uuid);
+        if ($user === null) {
+            throw new NotFoundException('El usuario no existe.');
+        }
+        if ($user['status'] !== 'active') {
+            throw new ValidationException('La cuenta está deshabilitada: actívala antes de enviar el acceso.');
+        }
+        $link = $this->auth->accessLink($user, 7);
+        $mailed = $this->mail->send((string) $user['email'], 'Tu enlace para entrar a ' . $this->settingsAppName(), 'welcome', [
+            'name' => $user['name'],
+            'adminName' => $admin['name'],
+            'roleLabel' => self::ROLE_LABELS[$user['role']] ?? $user['role'],
+            'canCreate' => $user['role'] !== 'external',
+            'url' => $link,
+            'days' => 7,
+        ]);
+        $this->audit->log('access_link_sent', (int) $admin['id'], 'user', (int) $user['id'], ['email' => $user['email']], $ctx);
+
+        return ['user' => $user, 'link' => $link, 'mailed' => $mailed];
+    }
+
+    public static function generatePassword(): string
+    {
+        // Sin caracteres ambiguos (0/O, 1/l/I) para que sea fácil de dictar o copiar.
+        $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $out = '';
+        for ($i = 0; $i < 12; $i++) {
+            $out .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            if ($i === 3 || $i === 7) {
+                $out .= '-';
+            }
+        }
+
+        return $out;
+    }
+
+    private function entityIdFrom(string $entityUuid): ?int
+    {
+        if ($entityUuid === '') {
+            return null;
+        }
+        $entity = $this->entities->findByUuid($entityUuid);
+        if ($entity === null) {
+            throw new ValidationException('La entidad seleccionada no existe.');
+        }
+
+        return (int) $entity['id'];
+    }
+
+    private function settingsAppName(): string
+    {
+        return $this->config->string('app.name', 'Compartir Archivos');
     }
 
     /**
      * @return array{items: list<array<string, mixed>>, total: int}
      */
-    public function users(string $query, ?string $entityUuid, int $page, int $perPage = 25): array
+    public function users(string $query, ?string $entityUuid, int $page, int $perPage = 25, ?string $role = null): array
     {
         $entityId = null;
         if ($entityUuid !== null && $entityUuid !== '') {
@@ -46,7 +173,9 @@ final class AdminService
             $entityId = $entity !== null ? (int) $entity['id'] : -1;
         }
 
-        return $this->users->search($query, $entityId, $perPage, max(0, $page - 1) * $perPage);
+        $role = in_array($role, array_keys(self::ROLE_LABELS), true) ? $role : null;
+
+        return $this->users->search($query, $entityId, $perPage, max(0, $page - 1) * $perPage, $role);
     }
 
     /**
@@ -69,7 +198,7 @@ final class AdminService
         }
         $v = Validator::make($input)
             ->required('name', 'El nombre')->maxLength('name', 150, 'El nombre')
-            ->in('role', ['admin', 'user'], 'El rol')
+            ->in('role', array_keys(self::ROLE_LABELS), 'El tipo de cuenta')
             ->in('status', ['active', 'disabled'], 'El estado');
         $v->validate();
         $role = $v->string('role');
@@ -102,7 +231,7 @@ final class AdminService
      *
      * @return list<array<string, mixed>>
      */
-    public function inviteUsers(array $admin, string $emailsRaw, ?string $entityUuid, RequestContext $ctx): array
+    public function inviteUsers(array $admin, string $emailsRaw, ?string $entityUuid, RequestContext $ctx, string $role = 'user'): array
     {
         $emails = Validator::splitEmails($emailsRaw);
         if ($emails === []) {
@@ -123,7 +252,7 @@ final class AdminService
                 $results[] = ['email' => $email, 'status' => 'already_member', 'message' => 'Ya tiene cuenta.'];
                 continue;
             }
-            $invite = $this->invitationService->invite($email, $admin, null, null, $entityId, $ctx);
+            $invite = $this->invitationService->invite($email, $admin, null, null, $entityId, $ctx, $role === 'external' ? 'external' : 'user');
             $results[] = [
                 'email' => $email,
                 'status' => 'invited',
@@ -242,6 +371,7 @@ final class AdminService
             'zip_max_bytes' => $gb($input['zip_max_gb'] ?? '', 'El tamaño máximo del ZIP'),
             'zip_max_files' => $int($input['zip_max_files'] ?? '', 'El número máximo de archivos por ZIP'),
             'blocked_extensions' => implode(',', SettingsService::parseExtensions((string) ($input['blocked_extensions'] ?? ''))),
+            'internal_domains' => implode(',', SettingsService::parseDomains((string) ($input['internal_domains'] ?? ''))),
         ];
         if ($values['max_file_bytes'] !== null && (int) $values['max_file_bytes'] > 5 * 1024 * 1073741824) {
             throw new ValidationException('S3 admite como máximo 5 TB por archivo.');

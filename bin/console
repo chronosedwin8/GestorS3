@@ -1,0 +1,20 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use App\Console\Commands\CreateAdminCommand;
+use App\Console\Commands\S3SetupCommand;
+use App\Console\Commands\StoragePurgeCommand;
+use App\Console\Commands\UploadsCleanupCommand;
+use Symfony\Component\Console\Application;
+
+/** @var Psr\Container\ContainerInterface $container */
+$container = require dirname(__DIR__) . '/src/bootstrap.php';
+
+$app = new Application('Compartir Archivos', '1.0.0');
+$app->add($container->get(CreateAdminCommand::class));
+$app->add($container->get(UploadsCleanupCommand::class));
+$app->add($container->get(S3SetupCommand::class));
+$app->add($container->get(StoragePurgeCommand::class));
+$app->run();

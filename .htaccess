@@ -1,0 +1,13 @@
+# Cuando el proyecto vive dentro de htdocs (XAMPP), todo se sirve desde public/.
+# Nada fuera de public/ (.env, vendor, storage, config...) es accesible.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^public/ - [L]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

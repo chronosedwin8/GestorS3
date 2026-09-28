@@ -1,0 +1,16 @@
+{
+  "name": "gestors3-frontend",
+  "private": true,
+  "description": "Assets del frontend: Tailwind CLI + Alpine.js + ES modules (sin bundler)",
+  "scripts": {
+    "css": "tailwindcss -i resources/css/app.css -o public/assets/css/app.css --minify",
+    "css:watch": "tailwindcss -i resources/css/app.css -o public/assets/css/app.css --watch",
+    "js": "node scripts/copy-assets.mjs",
+    "build": "npm run js && npm run css"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.0.0",
+    "alpinejs": "^3.14.0",
+    "tailwindcss": "^3.4.0"
+  }
+}

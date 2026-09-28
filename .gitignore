@@ -1,0 +1,16 @@
+/vendor/
+/node_modules/
+.env
+.env.local
+.env.testing
+/storage/logs/*
+/storage/sessions/*
+/storage/cache/*
+!/storage/**/.gitkeep
+/.phpunit.cache/
+/.php-cs-fixer.cache
+/coverage/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
